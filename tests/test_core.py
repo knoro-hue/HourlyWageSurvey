@@ -53,3 +53,14 @@ def test_geocode_specificity():
     assert is_specific_match("大阪市浪速区難波中", "大阪府大阪市浪速区難波中")
     assert is_specific_match("大阪府大阪市浪速区", "大阪府大阪市浪速区")
     assert not is_specific_match("大阪府大阪市浪速区", "大阪府堺市北区")
+
+
+def test_brand_match_excludes_tenants():
+    from wage_survey.records import CLASS_DIRECT, CLASS_INDIRECT, classify
+
+    settings = {"direct_competitor": {"brand_keywords": ["エディオン", "ケーズデンキ"]}}
+    store = {"own_keywords": ["ドスパラ"]}
+    tenant = classify({"clientName": "株式会社西松屋チェーン"}, {"clientShopName": "西松屋チェーン 1113 エディオン京橋店"}, store, settings, "")
+    assert tenant[0] == CLASS_INDIRECT
+    ks = classify({"clientName": "株式会社関西ケーズデンキ"}, {"clientShopName": "ケーズデンキ 東住吉中野店"}, store, settings, "")
+    assert ks[0] == CLASS_DIRECT

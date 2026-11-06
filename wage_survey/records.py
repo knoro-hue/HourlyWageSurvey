@@ -156,14 +156,26 @@ def _contains_any(text: str, words: list[str]) -> str:
     return ""
 
 
+def _brand_match(job: dict, shop: dict, brands: list[str]) -> str:
+    """企業名に含む、または店舗名がブランド名で始まる場合のみ一致（「西松屋 エディオン京橋店」等の館内テナントを除外）"""
+    w = _contains_any(job.get("clientName") or "", brands)
+    if w:
+        return w
+    shop_name = re.sub(r"^[\s　]+", "", nfkc(shop.get("clientShopName"))).lower()
+    for b in brands:
+        if shop_name.startswith(nfkc(b).lower()):
+            return b
+    return ""
+
+
 def classify(job: dict, shop: dict, store_cfg: dict, settings: dict, category: str) -> tuple[str, str]:
     """(分類, 根拠)"""
     names = " ".join([job.get("clientName") or "", shop.get("clientShopName") or ""])
-    w = _contains_any(names, store_cfg.get("own_keywords") or [])
+    w = _brand_match(job, shop, store_cfg.get("own_keywords") or [])
     if w:
         return CLASS_OWN, f"自社キーワード:{w}"
     direct = settings.get("direct_competitor", {})
-    w = _contains_any(names, direct.get("brand_keywords") or [])
+    w = _brand_match(job, shop, direct.get("brand_keywords") or [])
     if w:
         return CLASS_DIRECT, f"競合ブランド:{w}"
     head = " ".join([job.get("recruitmentOccupationName") or "", job.get("recruitmentAppealPoint") or "", names])
