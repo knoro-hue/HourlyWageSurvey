@@ -7,10 +7,12 @@
 
 ### **https://knoro-hue.github.io/HourlyWageSurvey/**
 
+なんば店に直接：https://knoro-hue.github.io/HourlyWageSurvey/docs/dospara-namba/
+
 毎週月曜の自動実行のたびに更新されます。店舗を選ぶと、自店・直接競合・間接競合の時給、時給の分布、職種別の相場、全求人の検索、企業別の求人数、時給の推移が見られます。Excel・CSV もダッシュボード上部のボタンからダウンロードできます。
 
 > 初回のみ設定が必要です：リポジトリの **Settings → Pages → Build and deployment** で
-> Source を **Deploy from a branch**、Branch を **main / `/docs`** にして Save。数分後に上のURLで表示されます。
+> Source を **Deploy from a branch**、Branch を **main**（フォルダは `/ (root)` でも `/docs` でも可）にして Save。数分後に上のURLで表示されます。
 
 | 見たいもの | 場所 |
 |---|---|
