@@ -17,6 +17,7 @@ import sys
 import yaml
 
 from .collector import collect_store
+from .dashboard import write_dashboard
 from .geo import Geocoder
 from .http import PoliteSession
 from .report import append_history, write_csv, write_excel, write_markdown
@@ -36,6 +37,8 @@ def main(argv=None) -> int:
     ap.add_argument("--settings", default="config/settings.yaml")
     ap.add_argument("--store", action="append", help="店舗ID（複数指定可）。省略時は enabled な全店舗")
     ap.add_argument("--out", default="reports")
+    ap.add_argument("--docs", default="docs", help="GitHub Pages 用ダッシュボードの出力先")
+    ap.add_argument("--repo", default="knoro-hue/HourlyWageSurvey", help="ダウンロードリンク用のリポジトリ名")
     ap.add_argument("--max-requests", type=int, default=None, help="店舗あたりの最大リクエスト数（上書き）")
     ap.add_argument("--date", default=None, help="レポート日付 YYYY-MM-DD（省略時は今日 JST）")
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -83,6 +86,7 @@ def main(argv=None) -> int:
         md = os.path.join(out_dir, "summary.md")
         write_markdown(res, md, run_date, files)
         append_history(res, os.path.join(a.out, st["id"], "history.csv"), run_date)
+        write_dashboard(res, run_date, os.path.join(a.out, st["id"], "history.csv"), a.docs, os.environ.get("GITHUB_REPOSITORY", a.repo))
         # 最新版へのショートカット
         latest = os.path.join(a.out, st["id"], "latest.md")
         with open(md, encoding="utf-8") as f:

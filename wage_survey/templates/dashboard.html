@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>時給調査ダッシュボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<style>
+  /* 白ベース固定。人事シーンのイラストを薄く透過して背景に敷く */
+  :root {
+    --fg: #1d2733; --muted: #5b6775; --line: #dbe3ec; --panel: rgba(255, 255, 255, 0.92); --grid: #e6ecf2; --axis: #b8c4d1;
+    --ind: #2f6fb3; --dir: #e0782f; --own: #c23b3b; --mute: #c5d0dc; --ok: #1f7a4d; --bad: #c0392b;
+    --sans: "Noto Sans JP", system-ui, sans-serif; --serif: "Shippori Mincho", "Noto Serif JP", serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--fg); font-family: var(--sans); font-size: 14px; line-height: 1.6;
+    background-color: #f6f9fc; background-image: linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.82)), url("../assets/bg.svg"); background-size: cover; background-position: center top; background-attachment: fixed; }
+  main { max-width: 1280px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, 3vw); padding-right: max(16px, 3vw); display: grid; gap: 28px; }
+  a { color: inherit; }
+  .crumb { font-size: 12px; color: var(--muted); }
+  h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(1.6rem, 3vw, 2.2rem); margin: 0; text-wrap: balance; }
+  .lede { margin: 6px 0 0; color: var(--muted); max-width: 75ch; font-size: 15px; }
+  .lede b { color: var(--fg); }
+  .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .links a { font-size: 12px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); text-decoration: none; }
+  .links a:hover { border-color: var(--ind); }
+  .tiles { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+  .tile { display: grid; gap: 4px; align-content: start; padding: 16px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .tile.own { border-color: var(--own); }
+  .tile .label { font-size: 12px; color: var(--muted); }
+  .tile .value { font-family: var(--serif); font-size: 2rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .tile .note { font-size: 12px; color: var(--muted); }
+  .neg { color: var(--bad); } .pos { color: var(--ok); }
+  .grid2 { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+  .card h2 { margin: 0; font-size: 16px; font-weight: 500; }
+  .note { margin: 0; font-size: 12px; color: var(--muted); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); }
+  .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 5px; vertical-align: -1px; }
+  .chart { position: relative; min-height: 220px; }
+  .chart svg { display: block; width: 100%; height: auto; }
+  .chart text { font-family: var(--sans); }
+  .tip { position: absolute; pointer-events: none; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px rgba(29, 39, 51, .12); padding: 6px 10px; font-size: 12px; white-space: nowrap; z-index: 3; }
+  .tip .k { color: var(--muted); }
+  .tablebox { max-height: 34rem; overflow: auto; border-top: 1px solid var(--line); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  th { position: sticky; top: 0; background: #fff; text-align: left; font-weight: 500; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; z-index: 1; }
+  th button { all: unset; cursor: pointer; }
+  th button:focus-visible { outline: 2px solid var(--ind); outline-offset: 2px; }
+  td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.num, th.num { text-align: right; }
+  td.wide { min-width: 18rem; color: var(--muted); }
+  .pill { display: inline-block; padding: 0 6px; border-radius: 6px; border: 1px solid var(--line); white-space: nowrap; font-size: 12px; }
+  .pill.c1 { border-color: var(--own); color: var(--own); } .pill.c3 { border-color: var(--dir); color: #a3501a; } .pill.c2 { border-color: var(--ind); color: var(--ind); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .controls input, .controls select { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--fg); }
+  .controls input { flex: 1 1 14rem; min-width: 0; }
+  .count { font-size: 12px; color: var(--muted); }
+  details { font-size: 13px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; }
+  details p { margin: 8px 0 0; }
+  .err { padding: 24px; background: #fff; border: 1px solid var(--bad); border-radius: 10px; }
+  @media (max-width: 700px) { .hide-narrow { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <div class="crumb"><a href="../">時給調査ダッシュボード</a> ／ 店舗</div>
+    <h1 id="title">読み込み中…</h1>
+    <p class="lede" id="lede"></p>
+    <div class="links" id="links"></div>
+  </div>
+
+  <section class="tiles">
+    <div class="tile own"><span class="label">① 自店の募集時給</span><span class="value" id="t-own">—</span><span class="note" id="t-own-note"></span></div>
+    <div class="tile"><span class="label" id="t-dir-label">③ 直接競合の時給中央値</span><span class="value" id="t-dir">—</span><span class="note" id="t-dir-note"></span></div>
+    <div class="tile"><span class="label" id="t-ind-label">② 間接競合の時給中央値</span><span class="value" id="t-ind">—</span><span class="note" id="t-ind-note"></span></div>
+    <div class="tile"><span class="label">⑥ 調査エリアの掲載求人数</span><span class="value" id="t-area">—</span><span class="note" id="t-area-note">マイナビバイト</span></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>時給の分布</h2>
+      <p class="note">間接競合の時給求人を50円刻みで数えた本数。点は直接競合、赤線は自店の募集時給。</p>
+      <div class="legend"><span><i style="background:var(--ind)"></i>② 間接競合</span><span><i style="background:var(--dir)"></i>③ 直接競合</span><span><i style="background:var(--own)"></i>① 自店</span></div>
+      <div class="chart" id="hist"></div>
+    </div>
+    <div class="card">
+      <h2>職種別の時給中央値</h2>
+      <p class="note">間接競合で求人の多い上位20職種。点線は全体の中央値、赤線は自店。</p>
+      <div class="chart" id="cat"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>時給の推移</h2>
+    <p class="note">毎週の調査ごとの中央値。調査を重ねると線になります。</p>
+    <div class="legend"><span><i style="background:var(--own)"></i>① 自店</span><span><i style="background:var(--dir)"></i>③ 直接競合 中央値</span><span><i style="background:var(--ind)"></i>② 間接競合 中央値</span></div>
+    <div class="chart" id="trend" style="min-height:200px"></div>
+  </section>
+
+  <section class="card">
+    <h2>③ 直接競合の一覧</h2>
+    <p class="note">家電量販店・PC関連小売と判定した求人。店舗名から求人ページを開けます。</p>
+    <div class="tablebox">
+      <table><thead><tr><th class="num">距離km</th><th>企業</th><th>店舗・勤務地</th><th>職種</th><th>給与</th><th class="hide-narrow">業務範囲（抜粋）</th></tr></thead><tbody id="direct"></tbody></table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>④⑤ 全求人一覧（距離順）</h2>
+    <p class="note">企業名・職種・仕事内容で絞り込めます。見出しを押すと並び替え。表示は最大300件で、全件はCSVでダウンロードできます。</p>
+    <div class="controls">
+      <input id="q" type="search" placeholder="例：家電、レジ、日本橋" aria-label="キーワードで絞り込み">
+      <select id="cls" aria-label="区分">
+        <option value="">すべての区分</option>
+        <option value="①自店">① 自店</option>
+        <option value="③直接競合">③ 直接競合</option>
+        <option value="②間接競合">② 間接競合</option>
+      </select>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="tablebox">
+      <table><thead><tr>
+        <th><button type="button" data-sort="class">区分</button></th>
+        <th class="num"><button type="button" data-sort="distance_km">距離km</button></th>
+        <th><button type="button" data-sort="shop">店舗・勤務地</button></th>
+        <th><button type="button" data-sort="occupation">職種</button></th>
+        <th class="hide-narrow"><button type="button" data-sort="category">職種分類</button></th>
+        <th class="num"><button type="button" data-sort="hourly">時給</button></th>
+        <th class="hide-narrow">給与表記</th>
+        <th class="hide-narrow">業務範囲（抜粋）</th>
+        <th class="hide-narrow"><button type="button" data-sort="site">求人サイト</button></th>
+      </tr></thead><tbody id="all"></tbody></table>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>⑥ 企業別の求人数</h2>
+      <p class="note">取得できた求人の本数。多い順に50社。</p>
+      <div class="tablebox"><table><thead><tr><th>企業</th><th>区分</th><th>求人サイト</th><th class="num">求人数</th><th class="num">最短km</th><th class="num">時給</th></tr></thead><tbody id="company"></tbody></table></div>
+    </div>
+    <div class="card">
+      <h2>⑥ 区別の掲載求人数</h2>
+      <p class="note">マイナビバイトの区ごとの掲載件数（全職種）。</p>
+      <div class="chart" id="area"></div>
+    </div>
+  </section>
+
+  <details>
+    <summary>集計方法と除外しているもの</summary>
+    <p>時給は各求人の下限額。日給・月給の求人は時給の集計に含めず、一覧には載せています。距離は求人の掲載座標から店舗までの直線距離です。派遣会社など本社住所が載っている求人は、勤務地の表記や最寄駅から位置を推定しています。</p>
+    <p>① 自店の時給は自社採用サイトの掲載値。② ③ はマイナビバイトの掲載求人で、サイトの規則により区×職種ごとに先頭30件まで取得しています。Indeed・バイトル・タウンワークは自動取得の対象外です（手入力CSVで追加できます）。</p>
+    <p id="notes"></p>
+  </details>
+</main>
+
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  const yen = (v) => (v == null || isNaN(v)) ? '—' : d3.format(',')(Math.round(v)) + '円';
+  let D;
+  try {
+    const r = await fetch('data.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    D = await r.json();
+  } catch (e) {
+    $('title').textContent = 'データを読み込めませんでした';
+    $('lede').textContent = 'data.json が見つかりません。GitHub Actions の実行が終わっているか確認してください。';
+    return;
+  }
+  const col = Object.fromEntries(D.columns.map((c, i) => [c, i]));
+  const rows = D.rows.map((a) => Object.fromEntries(D.columns.map((c) => [c, a[col[c]]])));
+  const S = D.summary, st = D.store;
+  const repoUrl = D.repo ? `https://github.com/${D.repo}` : '';
+  document.title = `${st.name} 時給調査`;
+  $('title').textContent = `${st.name} 時給調査`;
+
+  // 見出しの一文
+  const lede = $('lede');
+  const add = (t, b) => { if (b) { const e = document.createElement('b'); e.textContent = t; lede.appendChild(e); } else lede.appendChild(document.createTextNode(t)); };
+  add(`${D.run_date} 時点。`);
+  if (S.own.n) { add('自店の募集時給 '); add(yen(S.own.median), true); add(' に対し、'); }
+  add(`店舗から${st.indirect_radius_km}km圏の時給中央値は `); add(yen(S.indirect.median), true);
+  add(`、家電量販・PC関連（${st.direct_radius_km}km圏）は `); add(yen(S.direct.median), true); add(' です。');
+
+  const links = $('links');
+  const link = (text, href) => { const a = document.createElement('a'); a.href = href; a.textContent = text; a.target = '_blank'; a.rel = 'noopener'; links.appendChild(a); };
+  if (repoUrl) {
+    link('Excel（①〜⑥シート）をダウンロード', `${repoUrl}/raw/main/${D.files.excel}`);
+    link('CSV（全求人）をダウンロード', `${repoUrl}/raw/main/${D.files.csv}`);
+    link('テキスト版レポート', `${repoUrl}/blob/main/${D.files.summary}`);
+  }
+
+  // タイル
+  const gapText = (el, d) => { el.textContent = (d > 0 ? '+' : d < 0 ? '−' : '±') + yen(Math.abs(d)); el.className = d < 0 ? 'neg' : d > 0 ? 'pos' : ''; };
+  $('t-own').textContent = S.own.n ? yen(S.own.median) : '未登録';
+  if (S.own.n) {
+    const n = $('t-own-note');
+    n.append('間接競合との差 '); const g1 = document.createElement('b'); gapText(g1, S.own.median - S.indirect.median); n.append(g1);
+    if (S.direct.n) { n.append('、直接競合との差 '); const g2 = document.createElement('b'); gapText(g2, S.own.median - S.direct.median); n.append(g2); }
+  } else $('t-own-note').textContent = '自社採用サイトで見つからない場合は設定で入力できます';
+  $('t-dir-label').textContent = `③ 直接競合の時給中央値（${st.direct_radius_km}km）`;
+  $('t-ind-label').textContent = `② 間接競合の時給中央値（${st.indirect_radius_km}km）`;
+  $('t-dir').textContent = yen(S.direct.median);
+  $('t-dir-note').textContent = S.direct.n ? `時給求人 ${S.direct.n}件、範囲 ${yen(S.direct.min)}〜${yen(S.direct.max)}` : '該当なし';
+  $('t-ind').textContent = yen(S.indirect.median);
+  $('t-ind-note').textContent = S.indirect.n ? `時給求人 ${d3.format(',')(S.indirect.n)}件、上位25%は ${yen(S.indirect.p75)} 以上` : '該当なし';
+  const areaTotal = d3.sum(D.areas, (a) => a.count);
+  $('t-area').textContent = d3.format(',')(areaTotal) + '件';
+  $('t-area-note').textContent = `${D.areas.length}エリア、マイナビバイト`;
+  $('notes').textContent = `位置不明で除外：${D.notes.unlocated}件 ／ 取得リクエスト：${D.notes.requests}回` + (D.notes.budget_exhausted ? ' ／ 上限に達したため一部未取得' : '');
+
+  // 共通: ツールチップ・文字幅
+  const tipFor = (box) => {
+    const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; box.appendChild(tip);
+    return {
+      show(ev, k, lines) {
+        tip.replaceChildren();
+        const kk = document.createElement('div'); kk.className = 'k'; kk.textContent = k; tip.appendChild(kk);
+        for (const l of lines) { const d = document.createElement('div'); d.textContent = l; tip.appendChild(d); }
+        tip.hidden = false;
+        const b = box.getBoundingClientRect();
+        let x = ev.clientX - b.left + 12, y = ev.clientY - b.top + 12;
+        if (x + tip.offsetWidth > b.width) x = Math.max(0, ev.clientX - b.left - tip.offsetWidth - 12);
+        if (y + tip.offsetHeight > b.height) y = Math.max(0, ev.clientY - b.top - tip.offsetHeight - 12);
+        tip.style.left = x + 'px'; tip.style.top = y + 'px';
+      },
+      hide() { tip.hidden = true; }
+    };
+  };
+  const textW = (svg, s) => { const t = svg.append('text').attr('font-size', 12).text(s); const w = t.node().getComputedTextLength(); t.remove(); return w; };
+
+  function drawHist() {
+    const el = $('hist'); el.replaceChildren();
+    const W = Math.max(300, el.clientWidth), H = 240, lo = 1150, step = 50, hiCap = 2100;
+    const bins = d3.range(lo, hiCap + step, step).map((x0) => ({ x0, ind: 0, dir: 0 }));
+    const idx = (v) => Math.min(bins.length - 1, Math.max(0, Math.floor((Math.min(v, hiCap) - lo) / step)));
+    for (const r of rows) { const v = Number(r.hourly); if (!v) continue; if (r.class === '②間接競合') bins[idx(v)].ind++; else if (r.class === '③直接競合') bins[idx(v)].dir++; }
+    const label = (b) => b.x0 >= hiCap ? `${d3.format(',')(hiCap)}円〜` : `${d3.format(',')(b.x0)}〜${d3.format(',')(b.x0 + step - 1)}円`;
+    const svg = d3.select(el).append('svg').attr('viewBox', `0 0 ${W} ${H}`);
+    const y = d3.scaleLinear([0, d3.max(bins, (b) => b.ind) || 1], [H - 28, 14]).nice();
+    const ml = textW(svg, d3.format(',')(y.domain()[1])) + 10;
+    const x = d3.scaleBand(bins.map((b) => b.x0), [ml, W - 6]).padding(0.15);
+    svg.append('g').selectAll('line').data(y.ticks(4)).join('line').attr('x1', ml).attr('x2', W - 6).attr('y1', y).attr('y2', y).attr('stroke', 'var(--grid)');
+    svg.append('g').selectAll('text').data(y.ticks(4)).join('text').attr('x', ml - 6).attr('y', (d) => y(d) + 4).attr('text-anchor', 'end').attr('font-size', 12).attr('fill', 'var(--muted)').text(d3.format(','));
+    svg.append('g').selectAll('text').data(bins.filter((b, i) => i % 4 === 0)).join('text').attr('x', (b) => x(b.x0)).attr('y', H - 8).attr('font-size', 12).attr('fill', 'var(--muted)').text((b) => b.x0 >= hiCap ? `${d3.format(',')(hiCap)}+` : d3.format(',')(b.x0));
+    const bars = svg.append('g').selectAll('rect').data(bins).join('rect').attr('x', (b) => x(b.x0)).attr('width', x.bandwidth()).attr('y', (b) => y(b.ind)).attr('height', (b) => y(0) - y(b.ind)).attr('rx', Math.min(3, x.bandwidth() / 2)).attr('fill', 'var(--ind)');
+    svg.append('g').selectAll('circle').data(bins.filter((b) => b.dir)).join('circle').attr('cx', (b) => x(b.x0) + x.bandwidth() / 2).attr('cy', (b) => y(b.ind) - 8).attr('r', 5).attr('fill', 'var(--dir)').attr('stroke', '#fff').attr('stroke-width', 1.5);
+    if (S.own.n) {
+      const v = S.own.median, b = bins[idx(v)];
+      const ox = x(b.x0) + ((Math.min(v, hiCap) - b.x0) / step) * x.step();
+      svg.append('line').attr('x1', ox).attr('x2', ox).attr('y1', 14).attr('y2', H - 28).attr('stroke', 'var(--own)').attr('stroke-width', 2);
+      svg.append('text').attr('x', ox + 6).attr('y', 24).attr('font-size', 12).attr('fill', 'var(--own)').text(`自店 ${yen(v)}`);
+    }
+    svg.append('line').attr('x1', ml).attr('x2', W - 6).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', 'var(--axis)');
+    const tip = tipFor(el);
+    svg.append('g').selectAll('rect').data(bins).join('rect').attr('x', (b) => x(b.x0) - x.step() * x.paddingInner() / 2).attr('width', x.step()).attr('y', 0).attr('height', H - 28).attr('fill', 'transparent')
+      .on('mousemove', (ev, b) => { bars.attr('opacity', (d) => d === b ? 1 : 0.55); tip.show(ev, label(b), [`② 間接競合 ${b.ind}件`, `③ 直接競合 ${b.dir}件`]); })
+      .on('mouseleave', () => { bars.attr('opacity', 1); tip.hide(); });
+  }
+
+  function hbar(el, data, key, val, fmtVal, opts = {}) {
+    el.replaceChildren();
+    const W = Math.max(300, el.clientWidth), rowH = 24, H = data.length * rowH + (opts.axis ? 24 : 8);
+    const svg = d3.select(el).append('svg').attr('viewBox', `0 0 ${W} ${H}`);
+    const ml = Math.min(W * 0.45, d3.max(data, (r) => textW(svg, r[key])) + 10);
+    const vw = textW(svg, fmtVal(d3.max(data, (r) => r[val]) || 0)) + 10;
+    const x = d3.scaleLinear([opts.min ?? 0, d3.max(data, (r) => r[val]) || 1], [ml, W - vw]).nice();
+    const y = d3.scaleBand(data.map((r) => r[key]), [0, H - (opts.axis ? 24 : 8)]).padding(0.25);
+    svg.append('g').selectAll('text').data(data).join('text').attr('x', ml - 8).attr('y', (r) => y(r[key]) + y.bandwidth() / 2 + 4).attr('text-anchor', 'end').attr('font-size', 12).attr('fill', 'var(--fg)').text((r) => r[key]);
+    const tip = tipFor(el);
+    svg.append('g').selectAll('rect').data(data).join('rect').attr('x', ml).attr('y', (r) => y(r[key])).attr('height', y.bandwidth()).attr('width', (r) => Math.max(1, x(r[val]) - ml)).attr('rx', 3)
+      .attr('fill', (r) => opts.color ? opts.color(r) : 'var(--ind)')
+      .on('mousemove', (ev, r) => tip.show(ev, r[key], opts.tip ? opts.tip(r) : [fmtVal(r[val])])).on('mouseleave', () => tip.hide());
+    svg.append('g').selectAll('text.v').data(data).join('text').attr('x', (r) => x(r[val]) + 6).attr('y', (r) => y(r[key]) + y.bandwidth() / 2 + 4).attr('font-size', 12).attr('fill', 'var(--muted)').text((r) => fmtVal(r[val]));
+    for (const ref of opts.refs || []) {
+      if (ref.v == null) continue;
+      svg.append('line').attr('x1', x(ref.v)).attr('x2', x(ref.v)).attr('y1', 0).attr('y2', H - 24).attr('stroke', ref.color).attr('stroke-width', ref.dash ? 1 : 2).attr('stroke-dasharray', ref.dash ? '4 3' : null);
+      if (ref.label) svg.append('text').attr('x', x(ref.v)).attr('y', H - 8).attr('text-anchor', 'middle').attr('font-size', 12).attr('fill', ref.color).text(ref.label);
+    }
+  }
+
+  function drawCat() {
+    const g = d3.group(rows.filter((r) => r.class === '②間接競合' && Number(r.hourly)), (r) => r.category);
+    const data = [...g].map(([category, rs]) => ({ category, n: rs.length, median: d3.median(rs, (r) => Number(r.hourly)) })).filter((r) => r.n >= 5).sort((a, b) => b.n - a.n).slice(0, 20).sort((a, b) => b.median - a.median);
+    hbar($('cat'), data, 'category', 'median', yen, {
+      min: 1000, axis: true,
+      color: (r) => r.median >= S.indirect.median ? 'var(--ind)' : 'var(--mute)',
+      tip: (r) => [`中央値 ${yen(r.median)}`, `時給求人 ${r.n}件`],
+      refs: [{ v: S.indirect.median, color: 'var(--muted)', dash: true, label: `全体 ${yen(S.indirect.median)}` }, { v: S.own.n ? S.own.median : null, color: 'var(--own)' }]
+    });
+  }
+
+  function drawArea() {
+    const data = D.areas.map((a) => ({ area: a.area, n: a.count })).sort((a, b) => b.n - a.n);
+    hbar($('area'), data, 'area', 'n', (v) => d3.format(',')(v) + '件', { tip: (r) => [`掲載 ${d3.format(',')(r.n)}件`] });
+  }
+
+  function drawTrend() {
+    const el = $('trend'); el.replaceChildren();
+    const hs = (D.history || []).map((h) => ({ date: new Date(h.date + 'T00:00:00'), own: +h.own_hourly || null, dir: +h.direct_median || null, ind: +h.indirect_median || null })).sort((a, b) => a.date - b.date);
+    if (!hs.length) { el.textContent = '履歴はまだありません'; return; }
+    const W = Math.max(300, el.clientWidth), H = 200;
+    const svg = d3.select(el).append('svg').attr('viewBox', `0 0 ${W} ${H}`);
+    const vals = hs.flatMap((h) => [h.own, h.dir, h.ind]).filter(Boolean);
+    const y = d3.scaleLinear([d3.min(vals) - 100, d3.max(vals) + 100], [H - 28, 12]).nice();
+    const ml = textW(svg, d3.format(',')(y.domain()[1])) + 10, mr = 90;
+    const ext = d3.extent(hs, (h) => h.date);
+    if (+ext[0] === +ext[1]) { ext[0] = d3.timeDay.offset(ext[0], -7); ext[1] = d3.timeDay.offset(ext[1], 7); }
+    const x = d3.scaleTime(ext, [ml, W - mr]);
+    svg.append('g').selectAll('line').data(y.ticks(4)).join('line').attr('x1', ml).attr('x2', W - mr).attr('y1', y).attr('y2', y).attr('stroke', 'var(--grid)');
+    svg.append('g').selectAll('text').data(y.ticks(4)).join('text').attr('x', ml - 6).attr('y', (d) => y(d) + 4).attr('text-anchor', 'end').attr('font-size', 12).attr('fill', 'var(--muted)').text(d3.format(','));
+    svg.append('g').selectAll('text').data(hs).join('text').attr('x', (h) => x(h.date)).attr('y', H - 8).attr('text-anchor', 'middle').attr('font-size', 12).attr('fill', 'var(--muted)').text((h) => d3.timeFormat('%-m/%-d')(h.date));
+    const tip = tipFor(el);
+    for (const [k, c, name] of [['ind', 'var(--ind)', '間接'], ['dir', 'var(--dir)', '直接'], ['own', 'var(--own)', '自店']]) {
+      const pts = hs.filter((h) => h[k]);
+      if (!pts.length) continue;
+      svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', c).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round').attr('d', d3.line((h) => x(h.date), (h) => y(h[k])));
+      svg.append('g').selectAll('circle').data(pts).join('circle').attr('cx', (h) => x(h.date)).attr('cy', (h) => y(h[k])).attr('r', 4).attr('fill', c)
+        .on('mousemove', (ev, h) => tip.show(ev, d3.timeFormat('%Y-%m-%d')(h.date), [`${name} ${yen(h[k])}`])).on('mouseleave', () => tip.hide());
+      const last = pts[pts.length - 1];
+      svg.append('text').attr('x', x(last.date) + 8).attr('y', y(last[k]) + 4).attr('font-size', 12).attr('fill', c).text(`${name} ${yen(last[k])}`);
+    }
+  }
+
+  // 表
+  const cell = (tr, text, cls) => { const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = text ?? ''; tr.appendChild(td); return td; };
+  const linkCell = (tr, text, url) => {
+    const td = document.createElement('td');
+    if (url && /^https:\/\//.test(url)) { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = text; td.appendChild(a); } else td.textContent = text;
+    tr.appendChild(td);
+  };
+  const pillClass = (c) => c.startsWith('①') ? 'c1' : c.startsWith('③') ? 'c3' : 'c2';
+
+  const dirBody = $('direct');
+  for (const r of rows.filter((r) => r.class === '③直接競合')) {
+    const tr = document.createElement('tr');
+    cell(tr, r.distance_km, 'num'); cell(tr, r.company); linkCell(tr, r.shop, r.url); cell(tr, r.occupation); cell(tr, r.wage_text); cell(tr, r.work_content, 'wide hide-narrow');
+    dirBody.appendChild(tr);
+  }
+
+  const sortState = { key: 'distance_km', dir: 1 };
+  const numCols = new Set(['distance_km', 'hourly']);
+  function drawAll() {
+    const q = $('q').value.trim().toLowerCase(), c = $('cls').value;
+    const out = rows.filter((r) => (!c || r.class === c) && (!q || `${r.company} ${r.shop} ${r.occupation} ${r.category} ${r.work_content} ${r.station}`.toLowerCase().includes(q)));
+    const k = sortState.key, d = sortState.dir;
+    out.sort((a, b) => numCols.has(k) ? ((Number(a[k]) || Infinity) - (Number(b[k]) || Infinity)) * d : String(a[k]).localeCompare(String(b[k]), 'ja') * d);
+    const tb = $('all'); tb.replaceChildren();
+    for (const r of out.slice(0, 300)) {
+      const tr = document.createElement('tr');
+      const td = cell(tr, ''); const p = document.createElement('span'); p.className = 'pill ' + pillClass(r.class); p.textContent = r.class; td.appendChild(p);
+      cell(tr, r.distance_km, 'num'); linkCell(tr, r.shop, r.url); cell(tr, r.occupation); cell(tr, r.category, 'hide-narrow');
+      cell(tr, r.hourly ? d3.format(',')(r.hourly) : '', 'num'); cell(tr, r.wage_text, 'hide-narrow'); cell(tr, r.work_content, 'wide hide-narrow'); cell(tr, r.site, 'hide-narrow');
+      tb.appendChild(tr);
+    }
+    $('count').textContent = `${d3.format(',')(out.length)}件中 ${d3.format(',')(Math.min(out.length, 300))}件を表示`;
+  }
+  $('q').addEventListener('input', drawAll);
+  $('cls').addEventListener('change', drawAll);
+  document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => {
+    const k = b.dataset.sort; sortState.dir = sortState.key === k ? -sortState.dir : 1; sortState.key = k;
+    document.querySelectorAll('[data-sort]').forEach((o) => o.closest('th').setAttribute('aria-sort', o === b ? (sortState.dir > 0 ? 'ascending' : 'descending') : 'none'));
+    drawAll();
+  }));
+
+  const comp = [...d3.group(rows, (r) => r.company, (r) => r.class)].flatMap(([company, m]) => [...m].map(([cls, rs]) => {
+    const hv = rs.map((r) => Number(r.hourly)).filter(Boolean);
+    return { company, cls, site: [...new Set(rs.map((r) => r.site))].join(' / '), n: rs.length, km: d3.min(rs, (r) => Number(r.distance_km)), lo: d3.min(hv), hi: d3.max(hv) };
+  })).sort((a, b) => b.n - a.n || a.km - b.km).slice(0, 50);
+  for (const c of comp) {
+    const tr = document.createElement('tr');
+    cell(tr, c.company); const td = cell(tr, ''); const p = document.createElement('span'); p.className = 'pill ' + pillClass(c.cls); p.textContent = c.cls; td.appendChild(p);
+    cell(tr, c.site); cell(tr, c.n, 'num'); cell(tr, c.km, 'num');
+    cell(tr, c.lo ? (c.lo === c.hi ? d3.format(',')(c.lo) : `${d3.format(',')(c.lo)}〜${d3.format(',')(c.hi)}`) : '', 'num');
+    $('company').appendChild(tr);
+  }
+
+  const drawCharts = () => { drawHist(); drawCat(); drawArea(); drawTrend(); };
+  drawCharts(); drawAll();
+  let t; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(drawCharts, 150); }).observe(document.querySelector('main'));
+})();
+</script>
+</body>
+</html>
