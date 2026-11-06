@@ -168,7 +168,8 @@ def write_markdown(res: StoreResult, path: str, run_date: str, files: dict[str, 
     cls = by_class(res.rows)
     s_own, s_dir, s_ind = (stats(hourly_values(cls.get(k, []))) for k in (CLASS_OWN, CLASS_DIRECT, CLASS_INDIRECT))
     own_wage = s_own.get("median") if s_own["n"] else st.get("own_hourly_wage_manual")
-    lines = [f"# 時給調査：{st['name']}（{run_date}）", ""]
+    lines = [f"# 時給調査：{st['name']}（{run_date}）", "",
+             "📊 **ダッシュボード：https://knoro-hue.github.io/HourlyWageSurvey/**", ""]
     lines.append(f"所在地：{st.get('address', '')}　／　間接競合 半径{st.get('indirect_radius_km', 5)}km・直接競合 半径{st.get('direct_radius_km', 5)}km")
     lines.append("")
     lines.append("## 結論")

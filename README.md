@@ -3,9 +3,24 @@
 店舗ごとに、求人サイトから周辺のアルバイト時給を集めて **毎週自動でレポート化** します（GitHub Actions）。
 初版の対象は **ドスパラ大阪・なんば店**（大阪府大阪市浪速区日本橋3丁目6-22）。
 
-## 出力（①〜⑥）
+## 📊 ダッシュボード（ここを見る）
 
-最新版：[`reports/dospara-namba/latest.md`](reports/dospara-namba/latest.md)
+### **https://knoro-hue.github.io/HourlyWageSurvey/**
+
+毎週月曜の自動実行のたびに更新されます。店舗を選ぶと、自店・直接競合・間接競合の時給、時給の分布、職種別の相場、全求人の検索、企業別の求人数、時給の推移が見られます。Excel・CSV もダッシュボード上部のボタンからダウンロードできます。
+
+> 初回のみ設定が必要です：リポジトリの **Settings → Pages → Build and deployment** で
+> Source を **Deploy from a branch**、Branch を **main / `/docs`** にして Save。数分後に上のURLで表示されます。
+
+| 見たいもの | 場所 |
+|---|---|
+| ダッシュボード（グラフ・検索） | https://knoro-hue.github.io/HourlyWageSurvey/ |
+| テキスト版の最新レポート | [`reports/dospara-namba/latest.md`](reports/dospara-namba/latest.md) |
+| Excel（①〜⑥シート）・CSV | `reports/dospara-namba/<日付>/` |
+| 時系列データ | [`reports/dospara-namba/history.csv`](reports/dospara-namba/history.csv) |
+| 実行状況・手動実行 | [Actions タブ](https://github.com/knoro-hue/HourlyWageSurvey/actions) |
+
+## 出力（①〜⑥）
 
 | 要件 | 出力先 |
 |---|---|
