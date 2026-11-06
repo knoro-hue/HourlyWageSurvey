@@ -53,6 +53,9 @@
   td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
   td.num, th.num { text-align: right; }
   td.wide { min-width: 18rem; color: var(--muted); }
+  table.benefits td { white-space: normal; min-width: 9rem; line-height: 1.5; }
+  table.benefits td:first-child { min-width: 11rem; font-weight: 500; }
+  table.benefits .sub { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
   .pill { display: inline-block; padding: 0 6px; border-radius: 6px; border: 1px solid var(--line); white-space: nowrap; font-size: 12px; }
   .pill.c1 { border-color: var(--own); color: var(--own); } .pill.c3 { border-color: var(--dir); color: #a3501a; } .pill.c2 { border-color: var(--ind); color: var(--ind); }
   .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -100,6 +103,19 @@
     <p class="note">毎週の調査ごとの中央値。調査を重ねると線になります。</p>
     <div class="legend"><span><i style="background:var(--own)"></i>① 自店</span><span><i style="background:var(--dir)"></i>③ 直接競合 中央値</span><span><i style="background:var(--ind)"></i>② 間接競合 中央値</span></div>
     <div class="chart" id="trend" style="min-height:200px"></div>
+  </section>
+
+  <section class="card" id="benefits-card" hidden>
+    <h2>① 自店と ③ 直接競合の待遇比較</h2>
+    <p class="note" id="benefits-note">求人に書かれている待遇（自店は自社採用サイトの本文、競合はマイナビバイトの交通費欄・こだわり条件）。「記載なし」は制度が無いという意味ではありません。</p>
+    <div class="tablebox">
+      <table class="benefits"><thead><tr>
+        <th>店舗</th><th class="num">距離km</th><th>時給</th><th>交通費・昇給</th><th>登用・社割・社会保険</th><th>研修・加算・特徴</th><th>情報源</th>
+      </tr></thead><tbody id="benefits"></tbody></table>
+    </div>
+    <h2 style="margin-top:8px">待遇を明記している求人の割合</h2>
+    <p class="note">直接競合・間接競合それぞれで、求人に各待遇が書かれている割合。自店の求人票に書くべき項目の目安になります。</p>
+    <div class="tablebox" style="max-height:none"><table><thead><tr><th>待遇</th><th class="num">③ 直接競合</th><th class="num">② 間接競合</th></tr></thead><tbody id="rates"></tbody></table></div>
   </section>
 
   <section class="card">
@@ -336,6 +352,42 @@
     tr.appendChild(td);
   };
   const pillClass = (c) => c.startsWith('①') ? 'c1' : c.startsWith('③') ? 'c3' : 'c2';
+
+  // 待遇比較（Web調査）
+  if ((D.benefits || []).length) {
+    $('benefits-card').hidden = false;
+    if (D.research && D.research.researched_at) $('benefits-note').textContent += ` 調査日時：${D.research.researched_at.replace('T', ' ')}`;
+    const f = (label, v) => (v && v !== '記載なし' ? `${label} ${v}` : '');
+    const join = (...xs) => xs.filter((x) => x && x !== '記載なし').join('／') || '記載なし';
+    for (const b of D.benefits) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      const pl = document.createElement('span'); pl.className = 'pill ' + (b.class || '').replace(/^①.*/, 'c1').replace(/^③.*/, 'c3').replace(/^②.*/, 'c2'); pl.textContent = b.class || ''; td.appendChild(pl);
+      td.appendChild(document.createTextNode(' ' + (b.store || b.company || '')));
+      const sub = document.createElement('span'); sub.className = 'sub'; sub.textContent = b.address_or_station || ''; td.appendChild(sub); tr.appendChild(td);
+      cell(tr, b.distance_km ?? '—', 'num');
+      cell(tr, b.wage_text || '記載なし');
+      cell(tr, join(f('交通費', b.transport), f('昇給', b.raise)));
+      cell(tr, join(f('登用', b.promotion), f('社割', b.discount), f('社保', b.social_insurance)));
+      cell(tr, join(f('研修', b.training), f('加算', b.allowances), b.features));
+      const s = document.createElement('td');
+      if (b.source_url && /^https?:\/\//.test(b.source_url)) { const a = document.createElement('a'); a.href = b.source_url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = b.source_site || '出典'; s.appendChild(a); } else s.textContent = b.source_site || '';
+      if (b.source_date) { const d = document.createElement('span'); d.className = 'sub'; d.textContent = b.source_date; s.appendChild(d); }
+      tr.appendChild(s);
+      $('benefits').appendChild(tr);
+    }
+  }
+
+  const rates = D.benefit_rates || [];
+  const items = [...new Set(rates.map((r) => r.item))];
+  for (const it of items) {
+    const tr = document.createElement('tr'); cell(tr, it);
+    for (const cls of ['③直接競合', '②間接競合']) {
+      const r = rates.find((x) => x.item === it && x.class === cls);
+      cell(tr, r ? `${Math.round(r.rate * 100)}%（${r.n}/${r.total}件）` : '—', 'num');
+    }
+    $('rates').appendChild(tr);
+  }
 
   const dirBody = $('direct');
   for (const r of rows.filter((r) => r.class === '③直接競合')) {

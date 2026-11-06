@@ -48,6 +48,11 @@
   .gapbar { display: inline-block; width: 90px; height: 10px; position: relative; vertical-align: middle; margin-left: 8px; }
   .gapbar::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: .5; }
   .gapbar i { position: absolute; top: 0; height: 100%; border-radius: 2px; }
+  .dl-links { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+  .dl-links a { display: inline-flex; flex-direction: column; justify-content: center; padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--fg); text-decoration: none; font-size: 13px; }
+  .dl-links a:hover, .dl-links a:focus-visible { border-color: var(--ind); outline: none; }
+  .dl-links a.dl-main { background: var(--ind); border-color: var(--ind); color: #fff; font-weight: 500; }
+  .dl-links a.dl-main span { font-weight: 400; font-size: 11px; opacity: .9; }
   @media (max-width: 760px) { .hide-narrow { display: none; } .gapbar { display: none; } }
 </style>
 </head>
@@ -63,6 +68,17 @@
     <div class="tile"><span class="label">周辺相場（②中央値）より低い店舗</span><span class="value" id="t-below">—</span><span class="note">自店の募集時給が5km圏の中央値を下回る</span></div>
     <div class="tile"><span class="label">自店時給の全店中央値</span><span class="value" id="t-own">—</span><span class="note">自社採用サイトに掲載のある店舗</span></div>
     <div class="tile"><span class="label">周辺相場（②中央値）の全店中央値</span><span class="value" id="t-ind">—</span><span class="note">各店から5km圏の時給中央値</span></div>
+  </section>
+
+  <section class="card dl">
+    <h2>データのダウンロード（ChatGPT・Claude などのAIや Excel で再利用）</h2>
+    <p class="note">毎週の調査結果を全店分まとめたファイルです。ZIPをそのままAIに渡せば、同梱の説明書（README）を読んで分析できます。</p>
+    <div class="dl-links">
+      <a class="dl-main" href="data/dospara_wage_survey.zip" download>全店データ一式（ZIP）<span>店舗集計・全求人・待遇比較・説明書</span></a>
+      <a href="data/stores.csv" download>店舗ごとの集計（CSV）</a>
+      <a href="data/benefits.csv" download>自店と直接競合の待遇比較（CSV）</a>
+      <a href="data/README.md" target="_blank" rel="noopener">データの説明（AI向け）</a>
+    </div>
   </section>
 
   <section class="card">

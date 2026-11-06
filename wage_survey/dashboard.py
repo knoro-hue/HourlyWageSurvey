@@ -19,7 +19,16 @@ from .report import BENEFIT_COLUMNS, benefit_rates, benefit_rows, hourly_values,
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 COLUMNS = ["class", "distance_km", "company", "shop", "occupation", "category", "wage_type",
-           "wage_text", "hourly", "station", "location_basis", "site", "url", "work_content"]
+           "wage_text", "hourly", "station", "location_basis", "site", "url", "work_content", "benefits",
+           "posted_date"]
+BENEFIT_LABELS = {"transport": "交通費", "raise": "昇給", "promotion": "社員登用", "discount": "社員割引",
+                  "social_insurance": "社会保険", "training": "研修", "allowances": "加算・手当", "features": "その他"}
+
+
+def _benefit_text(b: dict | None) -> str:
+    if not b:
+        return ""
+    return "／".join(f"{BENEFIT_LABELS[k]}:{v}" for k, v in b.items() if k in BENEFIT_LABELS and v and v != "記載なし")
 
 
 def _short_category(c: str) -> str:
@@ -43,7 +52,7 @@ def build_data(res: StoreResult, run_date: str, history_path: str) -> dict:
         rows.append([
             r.classification, r.distance_km, r.company, r.shop, r.occupation, _short_category(r.category),
             r.wage_type, r.wage_text, r.hourly_min, r.station, r.location_method, r.site, r.url,
-            " ".join((r.work_content or "").split())[:160],
+            " ".join((r.work_content or "").split())[:160], _benefit_text(r.benefits), r.publication_start,
         ])
     areas = [{"area": p.area.replace("大阪市", ""), "count": p.count} for p in res.pages if p.purpose == "エリア全体" and p.count is not None]
     history = []
@@ -124,6 +133,105 @@ def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml")
     with open(os.path.join(docs_dir, "stores.json"), "w", encoding="utf-8") as f:
         json.dump(list(entries.values()), f, ensure_ascii=False)
     shutil.copyfile(os.path.join(TEMPLATE_DIR, "index.html"), os.path.join(docs_dir, "index.html"))
+    write_export(docs_dir, list(entries.values()))
+
+
+EXPORT_README = """# ドスパラ全店 時給調査データ（AI・表計算ソフト向け）
+
+このZIPは、ドスパラ各店舗の周辺アルバイト求人を自動収集・集計したデータです。
+ChatGPT・Claude・Gemini などのAIや Excel にそのまま読み込んで分析できます。
+作成日: {created}／対象店舗: {n_stores}店（調査済み {n_done}店）／求人: {n_jobs}件
+
+## ファイル
+- stores.csv   … 店舗ごとの集計（1行=1店舗）
+- jobs.csv     … 求人一覧（1行=1店舗×1求人。同じ求人が近くの複数店舗に出ることがある）
+- benefits.csv … ①自店と③直接競合の待遇比較（交通費・昇給・登用・社割・社保・研修・手当）
+- README.md    … この説明
+
+## 区分の定義
+- ①自店      … ドスパラの求人（自社採用サイト tw-saiyou.snar.jp の掲載値）
+- ③直接競合  … 家電量販店・パソコン専門店・PCパーツ店・中古PC/スマホ店の求人（店舗から10km以内）
+- ②間接競合  … それ以外の全職種の求人（店舗から5km以内）
+- 自社他店    … 近くにある別のドスパラ店舗の求人
+
+## stores.csv の列
+store_id, store_name, region(地域), prefecture, run_date(調査日),
+own_hourly(①自店の募集時給・円), indirect_median(②周辺の時給中央値・円), direct_median(③直接競合の時給中央値・円),
+gap_vs_indirect(①−②・円。マイナスは相場より低い), gap_vs_direct(①−③・円),
+indirect_n / direct_n(時給求人の件数), area_postings(周辺エリアのマイナビバイト掲載件数), report_url(店舗レポート)
+
+## jobs.csv の列
+store_id, store_name, class(区分), distance_km(店舗からの直線距離・km), company(企業), shop(店舗・勤務地名),
+occupation(職種名), category(職種分類), wage_type(時給/日給/月給), wage_text(給与表記),
+hourly(時給の下限・円。時給以外は空), station(最寄駅), location_basis(距離の根拠),
+site(求人サイト), url(求人URL), work_content(仕事内容の抜粋・最大160字), benefits(求人に明記された待遇), posted_date(掲載開始日)
+
+## 注意
+- 時給は求人の「下限額」。日給・月給は時給に換算していない。
+- ②③はマイナビバイトの掲載求人。サイトの規則により、エリア×職種ごとに先頭30件までの取得（件数そのものは area_postings が正確）。
+- Indeed・バイトル・タウンワークの求人は含まない。
+- 「記載なし」や空欄は、制度が無いことを意味しない（求人票に書かれていないだけ）。
+- 派遣会社の求人は、本社住所ではなく勤務地の表記や最寄駅から位置を推定している（location_basis 参照）。
+
+## AIへの質問例
+- 「stores.csv で gap_vs_indirect が小さい（相場より低い）店舗を10店挙げ、地域ごとの傾向を説明して」
+- 「jobs.csv から店舗ID dospara-namba の③直接競合だけを抜き出し、時給と待遇を比較表にして」
+- 「benefits.csv を使い、自店の求人票に足りない待遇の記載を店舗ごとに指摘して」
+"""
+
+
+def write_export(docs_dir: str, entries: list[dict]):
+    """全店の最新データを docs/data/ に CSV と ZIP で出力（他のAIや Excel で再利用するため）"""
+    import datetime as dt
+    import io
+    import zipfile
+
+    out_dir = os.path.join(docs_dir, "data")
+    os.makedirs(out_dir, exist_ok=True)
+    base_url = "https://knoro-hue.github.io/HourlyWageSurvey/docs/"
+    stores_csv = io.StringIO()
+    w = csv.writer(stores_csv)
+    w.writerow(["store_id", "store_name", "region", "prefecture", "run_date", "own_hourly", "indirect_median", "direct_median",
+                "gap_vs_indirect", "gap_vs_direct", "indirect_n", "direct_n", "area_postings", "report_url"])
+    for e in entries:
+        gi = e["own"] - e["indirect"] if e.get("own") is not None and e.get("indirect") is not None else None
+        gd = e["own"] - e["direct"] if e.get("own") is not None and e.get("direct") is not None else None
+        w.writerow([e["id"], e["name"], e.get("region", ""), e.get("pref", ""), e.get("run_date") or "", e.get("own"),
+                    e.get("indirect"), e.get("direct"), gi, gd, e.get("indirect_n", 0), e.get("direct_n", 0),
+                    e.get("postings"), base_url + e["id"] + "/" if e.get("run_date") else ""])
+    jobs_csv, ben_csv = io.StringIO(), io.StringIO()
+    jw, bw = csv.writer(jobs_csv), csv.writer(ben_csv)
+    jw.writerow(["store_id", "store_name"] + COLUMNS[:9] + ["station", "location_basis", "site", "url", "work_content", "benefits", "posted_date"])
+    bcols = [k for k, _ in BENEFIT_COLUMNS]
+    bw.writerow(["store_id", "store_name"] + bcols)
+    n_jobs = 0
+    for e in entries:
+        p = os.path.join(docs_dir, e["id"], "data.json")
+        if not os.path.isfile(p):
+            continue
+        with open(p, encoding="utf-8") as f:
+            d = json.load(f)
+        cols = d["columns"]
+        for row in d.get("rows", []):
+            rec = dict(zip(cols, row))
+            jw.writerow([e["id"], e["name"]] + [rec.get(c, "") for c in COLUMNS])
+            n_jobs += 1
+        for b in d.get("benefits", []):
+            bw.writerow([e["id"], e["name"]] + [b.get(k, "") for k in bcols])
+    readme = EXPORT_README.format(created=dt.date.today().isoformat(), n_stores=len(entries),
+                                  n_done=sum(1 for e in entries if e.get("run_date")), n_jobs=n_jobs)
+    bom = "\ufeff"  # Excel で文字化けしないよう BOM 付き UTF-8
+    with open(os.path.join(out_dir, "stores.csv"), "w", encoding="utf-8", newline="") as f:
+        f.write(bom + stores_csv.getvalue())
+    with open(os.path.join(out_dir, "benefits.csv"), "w", encoding="utf-8", newline="") as f:
+        f.write(bom + ben_csv.getvalue())
+    with open(os.path.join(out_dir, "README.md"), "w", encoding="utf-8") as f:
+        f.write(readme)
+    with zipfile.ZipFile(os.path.join(out_dir, "dospara_wage_survey.zip"), "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("README.md", readme)
+        z.writestr("stores.csv", bom + stores_csv.getvalue())
+        z.writestr("jobs.csv", bom + jobs_csv.getvalue())
+        z.writestr("benefits.csv", bom + ben_csv.getvalue())
 
 
 def rebuild_from_reports(store: dict, run_date: str, reports_dir: str = "reports", docs_dir: str = "docs", repo: str = ""):
