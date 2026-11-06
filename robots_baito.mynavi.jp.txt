@@ -1,0 +1,82 @@
+status=200
+User-Agent: bingbot
+Crawl-delay: 5
+Disallow: /mc/
+Disallow: /client/
+Disallow: /sp/common/
+Disallow: /cl/
+
+Disallow: /*select=*
+Disallow: /*/feature/
+
+Disallow: /*?*pageNo=
+Disallow: /*?*jobid=
+Disallow: /*?*reserve_
+
+Disallow: /admin/
+Disallow: /ai/
+Disallow: /clip/
+Disallow: /mente/
+
+
+User-Agent: AdIdxBot
+Crawl-delay: 10
+Disallow: /mc/
+Disallow: /client/
+Disallow: /sp/common/
+Disallow: /cl/
+
+Disallow: /*select=*
+Disallow: /*/feature/
+
+Disallow: /*?*pageNo=
+Disallow: /*?*jobid=
+Disallow: /*?*reserve_
+
+Disallow: /admin/
+Disallow: /ai/
+Disallow: /clip/
+Disallow: /mente/
+
+
+User-Agent: *
+Disallow: /mc/
+Disallow: /client/
+Disallow: /sp/common/
+Disallow: /cl/
+
+Disallow: /*select=*
+Disallow: /*/feature/
+
+Disallow: /*?*pageNo=
+Disallow: /*?*jobid=
+Disallow: /*?*reserve_
+
+Disallow: /admin/
+Disallow: /ai/
+Disallow: /clip/
+Disallow: /mente/
+
+
+Sitemap: https://baito.mynavi.jp/sitemap/pr_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/pr_ss_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/pr_kd_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/city_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/city_ss_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/city_kd_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/town_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/town_ss_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/town_kd_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/ot_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/ot_ss_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/ot_kd_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/rail_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/rail_ss_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/rail_kd_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/st_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/st_ss_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/st_kd_index.xml
+Sitemap: https://baito.mynavi.jp/sitemap/brand_index.xml
+
+Sitemap: https://baito.mynavi.jp/kw/keyword-sitemap-index.xml
+Sitemap: https://baito.mynavi.jp/sitemap_job_index_new.xml

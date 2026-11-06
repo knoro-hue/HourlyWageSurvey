@@ -1,0 +1,26 @@
+[
+ {
+  "url": "https://baito.mynavi.jp/osaka/",
+  "robots_allowed": true,
+  "final": "https://baito.mynavi.jp/osaka/",
+  "status": 200,
+  "size": 295579,
+  "file": "48fba4756c.html"
+ },
+ {
+  "url": "https://baito.mynavi.jp/sitemap/urlsets/city-001.xml",
+  "robots_allowed": true,
+  "final": "https://baito.mynavi.jp/sitemap/urlsets/city-001.xml",
+  "status": 200,
+  "size": 104459,
+  "file": "0acd88eafe.html"
+ },
+ {
+  "url": "https://baito.mynavi.jp/sitemap/urlsets/town-001.xml",
+  "robots_allowed": true,
+  "final": "https://baito.mynavi.jp/sitemap/urlsets/town-001.xml",
+  "status": 200,
+  "size": 32490,
+  "file": "445ca06d30.html"
+ }
+]
