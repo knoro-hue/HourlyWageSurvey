@@ -90,7 +90,7 @@
     </div>
   </section>
 
-  <p class="note">毎日6時台に、その曜日に割り当てた店舗を自動調査しています（各店舗は週1回更新）。① は自社採用サイト、② ③ はマイナビバイトの掲載求人。集計方法は各店舗のレポート下部を参照。</p>
+  <p class="note">毎週日曜の未明から全店を自動調査し、日曜の昼頃までに更新されます。① は自社採用サイト、② ③ はマイナビバイトの掲載求人。集計方法は各店舗のレポート下部を参照。</p>
 </main>
 <script>
 (async function () {
@@ -110,7 +110,7 @@
   const below = done.filter((s) => s.gap_ind != null && s.gap_ind < 0);
   const withOwn = done.filter((s) => s.gap_ind != null);
   $('t-stores').textContent = `${done.length} / ${S.length}店`;
-  $('t-stores-note').textContent = done.length < S.length ? `残り${S.length - done.length}店は割り当て曜日に順次調査` : '全店調査済み';
+  $('t-stores-note').textContent = done.length < S.length ? `残り${S.length - done.length}店は調査中または次回の日曜に調査` : '全店調査済み';
   $('t-below').textContent = withOwn.length ? `${below.length} / ${withOwn.length}店` : '—';
   $('t-own').textContent = yen(med(done.map((s) => s.own)));
   $('t-ind').textContent = yen(med(done.map((s) => s.indirect)));
@@ -146,7 +146,7 @@
       const tr = document.createElement('tr'); tr.className = 'row';
       const td = document.createElement('td');
       if (s.run_date) { const a = document.createElement('a'); a.href = `${s.id}/`; a.textContent = s.name; td.appendChild(a); tr.addEventListener('click', (e) => { if (e.target.tagName !== 'A') location.href = `${s.id}/`; }); }
-      else { td.textContent = s.name; const p = document.createElement('span'); p.className = 'pending'; p.textContent = s.shard != null ? `　${days[s.shard % 7]}曜に調査予定` : '　調査待ち'; td.appendChild(p); }
+      else { td.textContent = s.name; const p = document.createElement('span'); p.className = 'pending'; p.textContent = '　次回の日曜に調査予定'; td.appendChild(p); }
       tr.appendChild(td);
       cell(tr, s.region || s.pref || '', 'hide-narrow');
       cell(tr, s.run_date ? (s.own != null ? yen(s.own) : '求人掲載なし') : '—', 'num');
