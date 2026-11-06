@@ -110,6 +110,11 @@ def write_index(docs_dir: str = "docs"):
         )
     with open(os.path.join(TEMPLATE_DIR, "index.html"), encoding="utf-8") as f:
         page = f.read().replace("<!--CARDS-->", "\n".join(cards) or "<p>まだデータがありません。</p>")
+    # 店舗が1つだけのときは、その店舗のダッシュボードへ直接移動する
+    store_dirs = [sid for sid in sorted(os.listdir(docs_dir)) if os.path.isfile(os.path.join(docs_dir, sid, "data.json"))]
+    if len(store_dirs) == 1:
+        target = html.escape(store_dirs[0]) + "/"
+        page = page.replace("<head>", f'<head>\n<meta http-equiv="refresh" content="0; url={target}">', 1)
     with open(os.path.join(docs_dir, "index.html"), "w", encoding="utf-8") as f:
         f.write(page)
 
