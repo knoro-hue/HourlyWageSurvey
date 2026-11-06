@@ -6,7 +6,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 
-from . import mynavi
+from . import mynavi, snar
 from .geo import haversine_km
 from .records import CLASS_DIRECT, CLASS_INDIRECT, CLASS_OWN, JobRow, build_rows, nfkc
 
@@ -118,6 +118,7 @@ def collect_store(store: dict, settings: dict, session, geocoder) -> StoreResult
                 continue
             res.rows.append(row)
 
+    res.rows += snar.own_rows(store, session)
     res.rows += load_manual_rows(store, settings, geocoder)
     res.requests = session.count - start_requests
     return res

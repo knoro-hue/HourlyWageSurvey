@@ -64,3 +64,16 @@ def test_brand_match_excludes_tenants():
     assert tenant[0] == CLASS_INDIRECT
     ks = classify({"clientName": "株式会社関西ケーズデンキ"}, {"clientShopName": "ケーズデンキ 東住吉中野店"}, store, settings, "")
     assert ks[0] == CLASS_DIRECT
+
+
+def test_snar_parse():
+    from wage_survey.snar import parse_jobs, parse_wage_text
+
+    html = ('<div id="rpt_GroupItem_customBg_11" class="whiteBg"><div class="contents"><h3 class="tit">'
+            '<a id="rpt_GroupItem_lkb_Title_11" href="#">販売スタッフ_ドスパラなんば店</a></h3>'
+            '<p> ゲーミングパソコン販売！<br />時給：1,250円以上+交通費支給 <a>［more］</a></p>'
+            '<dl class="guidelines"><dt>職種</dt><dd>販売職 ＞店舗接客・販売（アルバイト）</dd>'
+            '<dt>勤務地</dt><dd>大阪府 ＞大阪市（ドスパラ大阪・なんば店）</dd></dl></div></div>')
+    jobs = parse_jobs(html)
+    assert len(jobs) == 1 and "なんば店" in jobs[0]["title"] and "なんば店" in jobs[0]["location"]
+    assert parse_wage_text(jobs[0]["body"])[:2] == (1250.0, None)

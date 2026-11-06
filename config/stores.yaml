@@ -10,6 +10,12 @@ stores:
     own_keywords: [ドスパラ, サードウェーブ, THIRDWAVE]
     own_match_radius_km: 0.3     # この距離以内の自社求人を「①自店」とみなす
     own_hourly_wage_manual: null # 求人サイトに無い場合の自店時給（例: 1250）
+    # ①自店: 自社採用サイトの求人一覧から、タイトル・勤務地に match を含む求人を取得
+    own_job_sites:
+      - type: snar
+        company: 株式会社サードウェーブ
+        url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+        match: [なんば店]
     indirect_radius_km: 5        # ②間接競合の範囲
     direct_radius_km: 10         # ③直接競合の範囲
     mynavi:
