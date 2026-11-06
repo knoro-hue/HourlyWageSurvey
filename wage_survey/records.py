@@ -85,7 +85,7 @@ def extract_workplace(*texts: str) -> str:
             m = p.search(t)
             if m:
                 v = re.sub(r"(周辺|エリア|ほか|他|など|※.*)$", "", m.group(1).strip())
-                if re.search(r"[都道府県市区町村]", v):
+                if re.search(r"[市区町村郡]", v):
                     return v
     return ""
 
@@ -118,7 +118,7 @@ def resolve_location(shop: dict, job: dict, geocoder, pref_label: str) -> tuple[
     for a in shop.get("accessList") or []:
         st = ((a.get("routeStation") or {}).get("label")) or ""
         if st:
-            pt = geocoder.geocode(f"{pref_label}{nfkc(st).replace('JR', '')}駅")
+            pt = geocoder.station(st, pref_label)
             if pt:
                 return pt[0], pt[1], "最寄駅から推定", f"{st}駅周辺"
     a2 = (shop.get("area2nd") or {}).get("label") or ""

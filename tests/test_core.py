@@ -43,3 +43,13 @@ def test_workplace_and_address():
 
 def test_haversine():
     assert abs(haversine_km(34.663044, 135.505203, 34.70249, 135.49595) - 4.47) < 0.05
+
+
+def test_geocode_specificity():
+    from wage_survey.geo import is_specific_match
+
+    assert not is_specific_match("大阪府なんば駅", "大阪府")
+    assert is_specific_match("大阪府大阪市浪速区日本橋3丁目6-22", "大阪府大阪市浪速区日本橋三丁目６番２２号")
+    assert is_specific_match("大阪市浪速区難波中", "大阪府大阪市浪速区難波中")
+    assert is_specific_match("大阪府大阪市浪速区", "大阪府大阪市浪速区")
+    assert not is_specific_match("大阪府大阪市浪速区", "大阪府堺市北区")

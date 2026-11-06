@@ -12,6 +12,23 @@ from urllib.parse import quote
 log = logging.getLogger(__name__)
 
 GSI_URL = "https://msearch.gsi.go.jp/address-search/AddressSearch?q="
+STATION_URL = "https://express.heartrails.com/api/json?method=getStations&name="
+_PREF_RE = re.compile(r"^(東京都|北海道|(?:京都|大阪)府|.{2,3}県)")
+_MUNI_RE = re.compile(r"^(.+?市.+?区|.+?郡.+?[町村]|.+?[市区町村])")
+
+
+def _strip_pref(s: str) -> str:
+    return _PREF_RE.sub("", s, count=1)
+
+
+def is_specific_match(query: str, title: str) -> bool:
+    """GSI は一致しない語を都道府県の代表点で返すことがあるため、市区町村まで一致した結果だけ採用する"""
+    q = _strip_pref(unicodedata.normalize("NFKC", query))
+    t = _strip_pref(unicodedata.normalize("NFKC", title or ""))
+    if not t:
+        return False
+    m = _MUNI_RE.match(t)
+    return bool(m) and m.group(1) in q
 
 
 def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -57,9 +74,12 @@ class Geocoder:
         if r is not None and r.status_code == 200:
             try:
                 data = r.json()
-                if data:
-                    lng, lat = data[0]["geometry"]["coordinates"]
-                    result = [float(lat), float(lng)]
+                for item in data or []:
+                    title = (item.get("properties") or {}).get("title", "")
+                    if is_specific_match(q, title):
+                        lng, lat = item["geometry"]["coordinates"]
+                        result = [float(lat), float(lng)]
+                        break
             except (ValueError, KeyError, IndexError, TypeError):
                 pass
         self.cache[q] = result
@@ -67,6 +87,37 @@ class Geocoder:
         if result is None:
             log.info("ジオコーディング失敗: %s", q)
         return tuple(result) if result else None
+
+    def station(self, name: str, prefecture: str = "") -> tuple[float, float] | None:
+        """駅名 → 座標（HeartRails Express API）。同名駅は都道府県で絞り込む"""
+        raw = unicodedata.normalize("NFKC", name or "").strip()
+        raw = re.sub(r"駅$", "", raw)
+        if not raw:
+            return None
+        cands = list(dict.fromkeys([raw, re.sub(r"^(JR|地下鉄|阪急|阪神|京阪|近鉄|南海|大阪メトロ)", "", raw)]))
+        for nm in cands:
+            key = f"station:{prefecture}:{nm}"
+            if key in self.cache:
+                v = self.cache[key]
+                if v:
+                    return v[0], v[1]
+                continue
+            r = self.session.get(STATION_URL + quote(nm), check_robots=False, delay=1.0)
+            result = None
+            if r is not None and r.status_code == 200:
+                try:
+                    sts = (r.json().get("response") or {}).get("station") or []
+                    sts = [x for x in sts if not prefecture or x.get("prefecture") == prefecture] or ([] if prefecture else sts)
+                    if sts:
+                        result = [float(sts[0]["y"]), float(sts[0]["x"])]
+                except (ValueError, KeyError, TypeError, AttributeError):
+                    pass
+            self.cache[key] = result
+            self._dirty = True
+            if result:
+                return result[0], result[1]
+        log.info("駅の座標取得失敗: %s (%s)", name, prefecture)
+        return None
 
     def save(self):
         if self._dirty:
