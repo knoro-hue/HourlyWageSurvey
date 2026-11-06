@@ -1,49 +1,710 @@
-# 調査対象店舗。全店展開時はここに店舗を追加する（README参照）
+# 調査対象店舗（python -m wage_survey.main --sync-stores で公式サイトから自動更新）
+# shard: 調査する曜日（0=月 … 6=日）。手で変えた値は次回の自動更新でも維持されます
 stores:
-  - id: dospara-namba
-    name: ドスパラ大阪・なんば店
-    enabled: true
-    address: 大阪府大阪市浪速区日本橋3丁目6-22 布谷ビル1F～4F
-    lat: 34.663044          # 国土地理院 住所検索APIの結果
-    lng: 135.505203
-    prefecture_label: 大阪府
-    own_keywords: [ドスパラ, サードウェーブ, THIRDWAVE]
-    own_match_radius_km: 0.3     # この距離以内の自社求人を「①自店」とみなす
-    own_hourly_wage_manual: null # 求人サイトに無い場合の自店時給（例: 1250）
-    # ①自店: 自社採用サイトの求人一覧から、タイトル・勤務地に match を含む求人を取得
-    own_job_sites:
-      - type: snar
-        company: 株式会社サードウェーブ
-        url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
-        match: [なんば店]
-    indirect_radius_km: 5        # ②間接競合の範囲
-    direct_radius_km: 10         # ③直接競合の範囲
-    mynavi:
-      # ②間接競合: 店舗から5km圏に掛かる区（マイナビバイトのエリアパス）
-      indirect_areas:
-        - osaka/city-262/town-144   # 浪速区
-        - osaka/city-262/town-160   # 中央区
-        - osaka/city-262/town-140   # 西区
-        - osaka/city-262/town-143   # 天王寺区
-        - osaka/city-262/town-151   # 阿倍野区
-        - osaka/city-262/town-154   # 西成区
-        - osaka/city-262/town-142   # 大正区
-        - osaka/city-262/town-141   # 港区
-        - osaka/city-262/town-159   # 北区
-        - osaka/city-262/town-138   # 福島区
-        - osaka/city-262/town-148   # 生野区
-        - osaka/city-262/town-147   # 東成区
-        - osaka/city-262/town-137   # 都島区
-        - osaka/city-262/town-150   # 城東区
-        - osaka/city-262/town-152   # 住吉区
-        - osaka/city-262/town-153   # 東住吉区
-      # ③直接競合: まず大阪市全体で検索し、30件超なら下記の区に分割
-      direct_areas:
-        - osaka/city-262
-      direct_fallback_areas:
-        - osaka/city-262/town-144
-        - osaka/city-262/town-160
-        - osaka/city-262/town-159
-        - osaka/city-262/town-140
-        - osaka/city-262/town-143
-        - osaka/city-262/town-151
+- id: dospara-sapporo
+  name: ドスパラ札幌店
+  region: 北海道・東北
+  prefecture_label: 北海道
+  address: 北海道札幌市北区北７条西5-8-2 札幌井須ビル
+  postal: 〒060-0807
+  shop_url: https://www.dospara.co.jp/shop/sapporo.html
+  lat: 43.070175
+  lng: 141.353851
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 札幌店
+  shard: 6
+- id: dospara-morioka
+  name: ドスパラ盛岡都南店
+  region: 北海道・東北
+  prefecture_label: 岩手県
+  address: 岩手県盛岡市三本柳11地割15
+  postal: 〒020-0831
+  shop_url: https://www.dospara.co.jp/shop/morioka.html
+  lat: 39.650284
+  lng: 141.16423
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 盛岡都南店
+  shard: 6
+- id: dospara-sendai
+  name: ドスパラ仙台店
+  region: 北海道・東北
+  prefecture_label: 宮城県
+  address: 宮城県仙台市宮城野区榴岡3丁目2-1 あるびす・ビル貳番館 2階
+  postal: 〒983-0852
+  shop_url: https://www.dospara.co.jp/shop/sendai.html
+  lat: 38.260601
+  lng: 140.886475
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 仙台店
+  shard: 3
+- id: dospara-koriyama
+  name: ドスパラ郡山安積店
+  region: 北海道・東北
+  prefecture_label: 福島県
+  address: 福島県郡山市安積1丁目142番地
+  postal: 〒963-0107
+  shop_url: https://www.dospara.co.jp/shop/koriyama.html
+  lat: 37.362904
+  lng: 140.368805
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 郡山安積店
+  shard: 4
+- id: dospara-akihabara
+  name: ドスパラ秋葉原本店
+  region: 関東
+  prefecture_label: 東京都
+  address: 東京都千代田区外神田3-11-2 ロック2ビル1F～3F/5F
+  postal: 〒101-0021
+  shop_url: https://www.dospara.co.jp/shop/akihabara.html
+  lat: 35.700493
+  lng: 139.770508
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 秋葉原本店
+  shard: 0
+- id: dospara-hachioji
+  name: ドスパラ八王子店
+  region: 関東
+  prefecture_label: 東京都
+  address: 東京都八王子市旭町12-6 ロイビル1F
+  postal: 〒192-0083
+  shop_url: https://www.dospara.co.jp/shop/hachioji.html
+  lat: 35.657089
+  lng: 139.340668
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 八王子店
+  shard: 0
+- id: dospara-machida
+  name: ドスパラ町田店
+  region: 関東
+  prefecture_label: 東京都
+  address: 東京都町田市原町田6-7-8 ティップス町田ビル1階
+  postal: 〒194-0013
+  shop_url: https://www.dospara.co.jp/shop/machida.html
+  lat: 35.542603
+  lng: 139.448105
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 町田店
+  shard: 0
+- id: dospara-omiya
+  name: ドスパラ大宮店
+  region: 関東
+  prefecture_label: 埼玉県
+  address: 埼玉県さいたま市大宮区宮町2-65 和久津ビル1F
+  postal: 〒330-0802
+  shop_url: https://www.dospara.co.jp/shop/omiya.html
+  lat: 35.909973
+  lng: 139.626755
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 大宮店
+  shard: 5
+- id: dospara-chiba
+  name: ドスパラ千葉店
+  region: 関東
+  prefecture_label: 千葉県
+  address: 千葉県千葉市中央区新田町5-3 勝山ビル1F
+  postal: 〒260-0027
+  shop_url: https://www.dospara.co.jp/shop/chiba.html
+  lat: 35.608761
+  lng: 140.114914
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 千葉店
+  shard: 6
+- id: dospara-kawasaki
+  name: ドスパラ川崎店
+  region: 関東
+  prefecture_label: 神奈川県
+  address: 神奈川県川崎市川崎区砂子1-1-18 NR共同ビル1F
+  postal: 〒210-0006
+  shop_url: https://www.dospara.co.jp/shop/kawasaki.html
+  lat: 35.531155
+  lng: 139.700943
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 川崎店
+  shard: 1
+- id: dospara-yokohama
+  name: ドスパラ横浜駅前店
+  region: 関東
+  prefecture_label: 神奈川県
+  address: 神奈川県横浜市西区南幸1-5-30 太洋第一ビル
+  postal: 〒220-0005
+  shop_url: https://www.dospara.co.jp/shop/yokohama.html
+  lat: 35.464867
+  lng: 139.620514
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 横浜駅前店
+  shard: 1
+- id: dospara-zama
+  name: ドスパラ座間相武台店
+  region: 関東
+  prefecture_label: 神奈川県
+  address: 神奈川県座間市広野台1丁目18-1
+  postal: 〒252-0012
+  shop_url: https://www.dospara.co.jp/shop/zama.html
+  lat: 35.507145
+  lng: 139.416229
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 座間相武台店
+  shard: 1
+- id: dospara-maebashi
+  name: ドスパラ前橋インターアカマル店
+  region: 関東近辺
+  prefecture_label: 群馬県
+  address: 群馬県高崎市中尾町44−1 アカマル内
+  postal: 〒370-0001
+  shop_url: https://www.dospara.co.jp/shop/maebashi.html
+  lat: 36.369942
+  lng: 139.027267
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 前橋インターアカマル店
+  shard: 0
+- id: dospara-utsunomiya
+  name: ドスパラ宇都宮鶴田店
+  region: 関東近辺
+  prefecture_label: 栃木県
+  address: 栃木県宇都宮市鶴田2丁目39－46
+  postal: 〒320-0857
+  shop_url: https://www.dospara.co.jp/shop/utsunomiya.html
+  lat: 36.560249
+  lng: 139.850967
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 宇都宮鶴田店
+  shard: 1
+- id: dospara-mito
+  name: ドスパラ水戸赤塚店
+  region: 関東近辺
+  prefecture_label: 茨城県
+  address: 茨城県水戸市見和3丁目663−6
+  postal: 〒310-0911
+  shop_url: https://www.dospara.co.jp/shop/mito.html
+  lat: 36.377632
+  lng: 140.417236
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 水戸赤塚店
+  shard: 2
+- id: dospara-niigata
+  name: ドスパラ新潟店
+  region: 中部
+  prefecture_label: 新潟県
+  address: 新潟県新潟市中央区紫竹山2-4-43 渡辺ビル1F
+  postal: 〒950-0914
+  shop_url: https://www.dospara.co.jp/shop/niigata.html
+  lat: 37.901405
+  lng: 139.066299
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 新潟店
+  shard: 3
+- id: dospara-toyama
+  name: ドスパラ富山本郷店
+  region: 中部
+  prefecture_label: 富山県
+  address: 富山県富山市本郷町58-3
+  postal: 〒939-8045
+  shop_url: https://www.dospara.co.jp/shop/toyama.html
+  lat: 36.668282
+  lng: 137.232452
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 富山本郷店
+  shard: 4
+- id: dospara-hakusan
+  name: ドスパラ白山フェアモール松任店
+  region: 中部
+  prefecture_label: 石川県
+  address: 石川県白山市幸明町145 フェアモール松任 南区D棟
+  postal: 〒924-0817
+  shop_url: https://www.dospara.co.jp/shop/hakusan.html
+  lat: 36.516788
+  lng: 136.579254
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 白山フェアモール松任店
+  shard: 5
+- id: dospara-fukui
+  name: ドスパラ福井日之出店
+  region: 中部
+  prefecture_label: 福井県
+  address: 福井県福井市日之出3丁目9-3
+  postal: 〒910-0859
+  shop_url: https://www.dospara.co.jp/shop/fukui.html
+  lat: 36.065327
+  lng: 136.229065
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 福井日之出店
+  shard: 6
+- id: dospara-kofu
+  name: ドスパラ甲府飯田店
+  region: 中部
+  prefecture_label: 山梨県
+  address: 山梨県甲府市飯田5-17-38
+  postal: 〒400-0035
+  shop_url: https://www.dospara.co.jp/shop/kofu.html
+  lat: 35.665398
+  lng: 138.553696
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 甲府飯田店
+  shard: 0
+- id: dospara-nagano
+  name: ドスパラ長野稲里店
+  region: 中部
+  prefecture_label: 長野県
+  address: 長野県長野市稲里町中央4丁目11-12
+  postal: 〒381-2217
+  shop_url: https://www.dospara.co.jp/shop/nagano.html
+  lat: 36.605003
+  lng: 138.166763
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 長野稲里店
+  shard: 1
+- id: dospara-shizuoka
+  name: ドスパラ静岡東瀬名店
+  region: 中部
+  prefecture_label: 静岡県
+  address: 静岡県静岡市葵区東瀬名町6-1
+  postal: 〒420-0912
+  shop_url: https://www.dospara.co.jp/shop/shizuoka.html
+  lat: 35.0103
+  lng: 138.425552
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 静岡東瀬名店
+  shard: 2
+- id: dospara-fuji
+  name: ドスパラ富士青葉店
+  region: 中部
+  prefecture_label: 静岡県
+  address: 静岡県富士市青葉町377
+  postal: 〒416-0952
+  shop_url: https://www.dospara.co.jp/shop/fuji.html
+  lat: 35.160694
+  lng: 138.658997
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 富士青葉店
+  shard: 2
+- id: dospara-hamamatsu
+  name: ドスパラ浜松店
+  region: 中部
+  prefecture_label: 静岡県
+  address: 静岡県浜松市中央区曳馬6-22-26
+  postal: 〒430-0901
+  shop_url: https://www.dospara.co.jp/shop/hamamatsu.html
+  lat: 34.737606
+  lng: 137.736023
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 浜松店
+  shard: 2
+- id: dospara-nagoya-osu
+  name: ドスパラ名古屋・大須店
+  region: 中部
+  prefecture_label: 愛知県
+  address: 愛知県名古屋市中区大須3-19-15 サードウェーブ大須ビル
+  postal: 〒460-0011
+  shop_url: https://www.dospara.co.jp/shop/nagoya-osu.html
+  lat: 35.160015
+  lng: 136.905045
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 名古屋・大須店
+    - 大須店
+  shard: 2
+- id: dospara-tsu
+  name: ドスパラ津ラッツ店
+  region: 中部
+  prefecture_label: 三重県
+  address: 三重県津市藤方716 ベイスクエア津 ラッツ1F
+  postal: 〒514-0815
+  shop_url: https://www.dospara.co.jp/shop/tsu.html
+  lat: 34.685066
+  lng: 136.518753
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 津ラッツ店
+  shard: 3
+- id: dospara-namba
+  name: ドスパラ大阪・なんば店
+  region: 関西
+  prefecture_label: 大阪府
+  address: 大阪府大阪市浪速区日本橋3丁目6-22 布谷ビル1F～4F
+  postal: 〒556-0005
+  shop_url: https://www.dospara.co.jp/shop/osaka-namba.html
+  lat: 34.663044
+  lng: 135.505203
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - なんば店
+  enabled: true
+  own_hourly_wage_manual: null
+  indirect_radius_km: 5
+  direct_radius_km: 10
+  own_match_radius_km: 0.3
+  mynavi:
+    indirect_areas:
+    - osaka/city-262/town-144
+    - osaka/city-262/town-160
+    - osaka/city-262/town-140
+    - osaka/city-262/town-143
+    - osaka/city-262/town-151
+    - osaka/city-262/town-154
+    - osaka/city-262/town-142
+    - osaka/city-262/town-141
+    - osaka/city-262/town-159
+    - osaka/city-262/town-138
+    - osaka/city-262/town-148
+    - osaka/city-262/town-147
+    - osaka/city-262/town-137
+    - osaka/city-262/town-150
+    - osaka/city-262/town-152
+    - osaka/city-262/town-153
+    direct_areas:
+    - osaka/city-262
+    direct_fallback_areas:
+    - osaka/city-262/town-144
+    - osaka/city-262/town-160
+    - osaka/city-262/town-159
+    - osaka/city-262/town-140
+    - osaka/city-262/town-143
+    - osaka/city-262/town-151
+  shard: 3
+- id: dospara-osaka-sakai
+  name: ドスパラ堺七道店
+  region: 関西
+  prefecture_label: 大阪府
+  address: 大阪府堺市堺区三宝町3丁174番地
+  postal: 〒590-0906
+  shop_url: https://www.dospara.co.jp/shop/osaka-sakai.html
+  lat: 34.592014
+  lng: 135.476959
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 堺七道店
+  shard: 3
+- id: dospara-kyoto
+  name: ドスパラ京都店
+  region: 関西
+  prefecture_label: 京都府
+  address: 京都府京都市下京区寺町通仏光寺下る恵美須之町536 サードウェーブ京都ビル1F
+  postal: 〒600-8033
+  shop_url: https://www.dospara.co.jp/shop/kyoto.html
+  lat: 34.987606
+  lng: 135.755478
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 京都店
+  shard: 4
+- id: dospara-kobe-sannomiya
+  name: ドスパラ神戸・三宮店
+  region: 関西
+  prefecture_label: 兵庫県
+  address: 兵庫県神戸市中央区三宮町1-9-1 センタープラザ3F
+  postal: 〒650-0021
+  shop_url: https://www.dospara.co.jp/shop/kobe-sannomiya.html
+  lat: 34.691673
+  lng: 135.192444
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 神戸・三宮店
+    - 三宮店
+  shard: 4
+- id: dospara-himeji
+  name: ドスパラ姫路MEGAドン・キホーテ広畑店
+  region: 関西
+  prefecture_label: 兵庫県
+  address: 兵庫県姫路市広畑区夢前町1-1-1 MEGAドン･キホーテ姫路広畑店 2F
+  postal: 〒671-1122
+  shop_url: https://www.dospara.co.jp/shop/himeji.html
+  lat: 34.796844
+  lng: 134.637177
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 姫路MEGAドン・キホーテ広畑店
+    - キホーテ広畑店
+  shard: 4
+- id: dospara-hiroshima
+  name: ドスパラ広島店
+  region: 中国・四国
+  prefecture_label: 広島県
+  address: 広島県広島市中区大手町1-5-13 清和大手町ビル1F
+  postal: 〒730-0051
+  shop_url: https://www.dospara.co.jp/shop/hiroshima.html
+  lat: 34.394154
+  lng: 132.455292
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 広島店
+  shard: 5
+- id: dospara-fukuyama
+  name: ドスパラ福山ココローズ店
+  region: 中国・四国
+  prefecture_label: 広島県
+  address: 広島県福山市緑町2-44-4 ココローズ福山
+  postal: 〒720-0804
+  shop_url: https://www.dospara.co.jp/shop/fukuyama.html
+  lat: 34.477859
+  lng: 133.374451
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 福山ココローズ店
+  shard: 5
+- id: dospara-tokushima
+  name: ドスパラ徳島住吉店
+  region: 中国・四国
+  prefecture_label: 徳島県
+  address: 徳島県徳島市住吉5丁目45-2
+  postal: 〒770-0861
+  shop_url: https://www.dospara.co.jp/shop/tokushima.html
+  lat: 34.081623
+  lng: 134.575607
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 徳島住吉店
+  shard: 5
+- id: dospara-matsuyama
+  name: ドスパラ松山環状枝松店
+  region: 中国・四国
+  prefecture_label: 愛媛県
+  address: 愛媛県松山市枝松5-7-32
+  postal: 〒790-0962
+  shop_url: https://www.dospara.co.jp/shop/matsuyama.html
+  lat: 33.828682
+  lng: 132.786514
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 松山環状枝松店
+  shard: 6
+- id: dospara-hakata
+  name: ドスパラ博多店
+  region: 九州・沖縄
+  prefecture_label: 福岡県
+  address: 福岡県福岡市博多区東光寺町2丁目6番40号 コマーシャルモール博多 1F 114区画
+  postal: 〒812-0896
+  shop_url: https://www.dospara.co.jp/shop/hakata.html
+  lat: 33.576847
+  lng: 130.435608
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 博多店
+  shard: 0
+- id: dospara-saga
+  name: ドスパラ佐賀南部バイパス店
+  region: 九州・沖縄
+  prefecture_label: 佐賀県
+  address: 佐賀県佐賀市本庄町本庄200
+  postal: 〒840-0027
+  shop_url: https://www.dospara.co.jp/shop/saga.html
+  lat: 33.239948
+  lng: 130.295319
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 佐賀南部バイパス店
+  shard: 1
+- id: dospara-oita
+  name: ドスパラ大分光吉インター店
+  region: 九州・沖縄
+  prefecture_label: 大分県
+  address: 大分県大分市宮崎696-1 コムボックス大分2階
+  postal: 〒870-1133
+  shop_url: https://www.dospara.co.jp/shop/oita.html
+  lat: 33.201084
+  lng: 131.608765
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 大分光吉インター店
+  shard: 2
+- id: dospara-kumamoto
+  name: ドスパラ熊本浜線店
+  region: 九州・沖縄
+  prefecture_label: 熊本県
+  address: 熊本県熊本市南区田迎3丁目12-7
+  postal: 〒862-0962
+  shop_url: https://www.dospara.co.jp/shop/kumamoto.html
+  lat: 32.777508
+  lng: 130.716415
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 熊本浜線店
+  shard: 3
+- id: dospara-miyazaki
+  name: ドスパラ宮崎恒久店
+  region: 九州・沖縄
+  prefecture_label: 宮崎県
+  address: 宮崎県宮崎市恒久903-1
+  postal: 〒880-0916
+  shop_url: https://www.dospara.co.jp/shop/miyazaki.html
+  lat: 31.883396
+  lng: 131.427811
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 宮崎恒久店
+  shard: 4
+- id: dospara-kagoshima
+  name: ドスパラ鹿児島アクロスプラザ与次郎店
+  region: 九州・沖縄
+  prefecture_label: 鹿児島県
+  address: 鹿児島県鹿児島市与次郎1丁目7-20アクロスプラザ1F
+  postal: 〒890-0062
+  shop_url: https://www.dospara.co.jp/shop/kagoshima.html
+  lat: 31.569281
+  lng: 130.563965
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 鹿児島アクロスプラザ与次郎店
+  shard: 5
+- id: dospara-okinawa
+  name: ドスパラ浦添城間店
+  region: 九州・沖縄
+  prefecture_label: 沖縄県
+  address: 沖縄県浦添市城間4-35-2 APエルテージ城間ビル1F
+  postal: 〒901-2133
+  shop_url: https://www.dospara.co.jp/shop/okinawa.html
+  lat: 26.260479
+  lng: 127.711899
+  own_job_sites:
+  - type: snar
+    company: 株式会社サードウェーブ
+    url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
+    match:
+    - 浦添城間店
+  shard: 6
