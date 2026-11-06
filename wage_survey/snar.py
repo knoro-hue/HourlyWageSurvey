@@ -14,6 +14,7 @@ from .records import CLASS_OWN, JobRow, nfkc
 log = logging.getLogger(__name__)
 
 SITE_NAME = "自社採用サイト"
+_PAGE_CACHE: dict = {}
 _BLOCK_RE = re.compile(r'<div id="rpt_GroupItem_customBg_\d+"')
 _WAGE_RE = re.compile(r"時給\s*[:：]?\s*([\d,]+)\s*円(?:\s*[~〜～-]\s*([\d,]+)\s*円)?")
 
@@ -67,7 +68,9 @@ def own_rows(store: dict, session) -> list[JobRow]:
         if src.get("type") != "snar":
             continue
         url = src["url"]
-        r = session.get(url)
+        r = _PAGE_CACHE.get(url) or session.get(url)
+        if r is not None and r.status_code == 200:
+            _PAGE_CACHE[url] = r
         if r is None or r.status_code != 200:
             log.warning("自社採用サイトを取得できません: %s", url)
             continue

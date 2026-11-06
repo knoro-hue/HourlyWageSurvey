@@ -87,9 +87,21 @@ def write_dashboard(res: StoreResult, run_date: str, history_path: str, docs_dir
     write_index(docs_dir)
 
 
-def write_index(docs_dir: str = "docs"):
-    """docs/*/data.json から店舗一覧ページを作る"""
-    cards = []
+def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml"):
+    """メイン画面（全店一覧）用の docs/stores.json と docs/index.html を作る"""
+    import yaml
+
+    cfg_stores = []
+    if os.path.exists(stores_path):
+        with open(stores_path, encoding="utf-8") as f:
+            cfg_stores = [s for s in (yaml.safe_load(f) or {}).get("stores") or [] if s.get("enabled", True)]
+    entries = {}
+    for s in cfg_stores:
+        entries[s["id"]] = {
+            "id": s["id"], "name": s["name"], "region": s.get("region", ""), "pref": s.get("prefecture_label", ""),
+            "shard": s.get("shard"), "run_date": None, "own": None, "direct": None, "indirect": None,
+            "direct_n": 0, "indirect_n": 0, "postings": None, "jobs": 0,
+        }
     for sid in sorted(os.listdir(docs_dir)):
         p = os.path.join(docs_dir, sid, "data.json")
         if not os.path.isfile(p):
@@ -97,26 +109,18 @@ def write_index(docs_dir: str = "docs"):
         with open(p, encoding="utf-8") as f:
             d = json.load(f)
         s = d["summary"]
-
-        def yen(x):
-            return "—" if not x or x.get("n", 0) == 0 or x.get("median") is None else f"{x['median']:,.0f}円"
-
-        cards.append(
-            f'<a class="card" href="{html.escape(sid)}/"><span class="name">{html.escape(d["store"]["name"])}</span>'
-            f'<span class="date">調査日 {html.escape(d["run_date"])}</span>'
-            f'<span class="kv"><span>① 自店</span><b>{yen(s["own"])}</b></span>'
-            f'<span class="kv"><span>③ 直接競合 中央値</span><b>{yen(s["direct"])}</b></span>'
-            f'<span class="kv"><span>② 間接競合 中央値</span><b>{yen(s["indirect"])}</b></span></a>'
-        )
-    with open(os.path.join(TEMPLATE_DIR, "index.html"), encoding="utf-8") as f:
-        page = f.read().replace("<!--CARDS-->", "\n".join(cards) or "<p>まだデータがありません。</p>")
-    # 店舗が1つだけのときは、その店舗のダッシュボードへ直接移動する
-    store_dirs = [sid for sid in sorted(os.listdir(docs_dir)) if os.path.isfile(os.path.join(docs_dir, sid, "data.json"))]
-    if len(store_dirs) == 1:
-        target = html.escape(store_dirs[0]) + "/"
-        page = page.replace("<head>", f'<head>\n<meta http-equiv="refresh" content="0; url={target}">', 1)
-    with open(os.path.join(docs_dir, "index.html"), "w", encoding="utf-8") as f:
-        f.write(page)
+        e = entries.setdefault(sid, {"id": sid, "name": d["store"]["name"], "region": "", "pref": "", "shard": None})
+        e.update({
+            "run_date": d["run_date"],
+            "own": s["own"].get("median") if s["own"].get("n") else None,
+            "direct": s["direct"].get("median") if s["direct"].get("n") else None,
+            "indirect": s["indirect"].get("median") if s["indirect"].get("n") else None,
+            "direct_n": s["direct"].get("n", 0), "indirect_n": s["indirect"].get("n", 0),
+            "postings": sum(a.get("count") or 0 for a in d.get("areas", [])), "jobs": len(d.get("rows", [])),
+        })
+    with open(os.path.join(docs_dir, "stores.json"), "w", encoding="utf-8") as f:
+        json.dump(list(entries.values()), f, ensure_ascii=False)
+    shutil.copyfile(os.path.join(TEMPLATE_DIR, "index.html"), os.path.join(docs_dir, "index.html"))
 
 
 def rebuild_from_reports(store: dict, run_date: str, reports_dir: str = "reports", docs_dir: str = "docs", repo: str = ""):

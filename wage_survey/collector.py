@@ -6,6 +6,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 
+from . import areas as areas_mod
 from . import mynavi, snar
 from .geo import haversine_km
 from .records import CLASS_DIRECT, CLASS_INDIRECT, CLASS_OWN, JobRow, build_rows, nfkc
@@ -33,18 +34,29 @@ class StoreResult:
     unlocated: int = 0
     requests: int = 0
     budget_exhausted: bool = False
+    areas: list[str] = field(default_factory=list)
 
 
 def _specificity(occ_path: str) -> int:
     return occ_path.count("/") + (1 if occ_path else 0)
 
 
-def collect_store(store: dict, settings: dict, session, geocoder) -> StoreResult:
+def collect_store(store: dict, settings: dict, session, geocoder, page_cache: dict | None = None, area_master: dict | None = None) -> StoreResult:
+    """page_cache: 同じ実行内で店舗間の取得結果を共有する（同じURLは1回だけ取得）"""
     res = StoreResult(store=store)
+    page_cache = {} if page_cache is None else page_cache
     cfg = store.get("mynavi") or {}
     indirect_areas: list[str] = cfg.get("indirect_areas") or []
     direct_areas: list[str] = cfg.get("direct_areas") or []
     direct_fallback: list[str] = cfg.get("direct_fallback_areas") or []
+    if not indirect_areas and area_master:
+        indirect_areas = areas_mod.select_areas(store, area_master, float(store.get("indirect_radius_km", 5)))
+        direct_areas = areas_mod.select_areas(store, area_master, float(store.get("direct_radius_km", 10)))
+        direct_fallback = []
+        log.info("%s: 対象エリア 間接 %d / 直接 %d", store["id"], len(indirect_areas), len(direct_areas))
+    if not indirect_areas:
+        log.warning("%s: 対象エリアがありません（エリアマスタ未作成の可能性）", store["id"])
+    res.areas = list(indirect_areas)
     direct_occ: list[str] = settings["mynavi"].get("direct_occupation_paths") or []
     drill_priority: list[str] = settings["mynavi"].get("drill_priority_ss") or []
     start_requests = session.count
@@ -52,13 +64,17 @@ def collect_store(store: dict, settings: dict, session, geocoder) -> StoreResult
     jobs: dict[str, dict] = {}  # jobStockCd -> {"job":..., "category":..., "spec":..., "url":...}
 
     def visit(purpose: str, area: str, occ: str = "") -> mynavi.SearchPage | None:
-        if not session.budget_left():
-            res.budget_exhausted = True
-            return None
         url = mynavi.search_url(area, occ)
-        page = mynavi.fetch_search(session, url)
-        if page is None:
-            return None
+        if url in page_cache:
+            page = page_cache[url]
+        else:
+            if not session.budget_left():
+                res.budget_exhausted = True
+                return None
+            page = mynavi.fetch_search(session, url)
+            if page is None:
+                return None
+            page_cache[url] = page
         res.pages.append(PageLog(purpose, url, page.area_label or area, page.occupation_label or occ, page.count, len(page.jobs)))
         spec = _specificity(occ)
         for j in page.jobs:
@@ -93,7 +109,7 @@ def collect_store(store: dict, settings: dict, session, geocoder) -> StoreResult
     # 3) 中分類へのドリルダウン（優先度順・予算内）
     drill_queue.sort(key=lambda x: x[0])
     for _, area, ssm in drill_queue:
-        if not session.budget_left():
+        if not session.budget_left() and mynavi.search_url(area, ssm) not in page_cache:
             res.budget_exhausted = True
             break
         visit("職種中分類", area, ssm)

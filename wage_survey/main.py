@@ -16,8 +16,10 @@ import sys
 
 import yaml
 
+from . import areas as areas_mod
+from . import stores_sync
 from .collector import collect_store
-from .dashboard import write_dashboard
+from .dashboard import write_dashboard, write_index
 from .geo import Geocoder
 from .http import PoliteSession
 from .report import append_history, write_csv, write_excel, write_markdown
@@ -41,21 +43,54 @@ def main(argv=None) -> int:
     ap.add_argument("--repo", default="knoro-hue/HourlyWageSurvey", help="ダウンロードリンク用のリポジトリ名")
     ap.add_argument("--max-requests", type=int, default=None, help="店舗あたりの最大リクエスト数（上書き）")
     ap.add_argument("--date", default=None, help="レポート日付 YYYY-MM-DD（省略時は今日 JST）")
+    ap.add_argument("--shard", default=None, help="この曜日番号（0=月…6=日）の店舗だけ調査。today で今日（JST）")
+    ap.add_argument("--sync-stores", action="store_true", help="公式サイトの店舗一覧から config/stores.yaml を更新して終了")
+    ap.add_argument("--build-areas", action="store_true", help="マイナビバイトのエリアマスタを作成・更新して終了")
+    ap.add_argument("--areas", default="data/mynavi_areas.json")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if a.verbose else logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     settings = load_yaml(a.settings)
-    stores = load_yaml(a.stores).get("stores") or []
-    targets = [s for s in stores if (s["id"] in a.store if a.store else s.get("enabled", True))]
-    if not targets:
-        log.error("対象店舗がありません（--store の指定や enabled を確認）")
-        return 2
-    run_date = a.date or dt.datetime.now(JST).strftime("%Y-%m-%d")
-    max_req = a.max_requests or settings.get("max_requests_per_store", 450)
-
     geo_session = PoliteSession(delay_sec=1.0)
     geocoder = Geocoder(geo_session, settings.get("geocode_cache", "data/geocode_cache.json"))
+    delay = float(settings.get("request_delay_sec", 4))
+
+    if a.sync_stores:
+        own = settings.get("own_job_site") or {}
+        stores_sync.sync(PoliteSession(delay_sec=delay), geocoder, a.stores, own.get("url", ""), own.get("company", ""))
+        geocoder.save()
+        return 0
+
+    defaults = settings.get("store_defaults") or {}
+    stores = [{**defaults, **s} for s in (load_yaml(a.stores).get("stores") or [])]
+
+    if a.build_areas:
+        prefs = set()
+        for s in stores:
+            if s.get("enabled", True):
+                slug = areas_mod.pref_of(s.get("address", ""))[1]
+                prefs |= {slug, *areas_mod.NEIGHBORS.get(slug, [])}
+        session = PoliteSession(delay_sec=delay, max_requests=a.max_requests or settings.get("max_requests_area_master", 1500))
+        areas_mod.build_master(session, geocoder, sorted(p for p in prefs if p), a.areas)
+        return 0
+
+    if a.store:
+        targets = [s for s in stores if s["id"] in a.store]
+    else:
+        targets = [s for s in stores if s.get("enabled", True)]
+        if a.shard is not None:
+            shard = dt.datetime.now(JST).weekday() if a.shard == "today" else int(a.shard)
+            targets = [s for s in targets if int(s.get("shard", 0)) % 7 == shard]
+            log.info("曜日 %d の店舗: %s", shard, ", ".join(s["id"] for s in targets) or "なし")
+    if not targets:
+        log.warning("対象店舗がありません（--store / --shard / enabled を確認）")
+        return 0
+    run_date = a.date or dt.datetime.now(JST).strftime("%Y-%m-%d")
+    max_req = a.max_requests or settings.get("max_requests_per_store", 450)
+    area_master = areas_mod.load_master(a.areas)
+    session = PoliteSession(delay_sec=delay)
+    page_cache: dict = {}
     failed = 0
     for st in targets:
         log.info("=== %s (%s) ===", st["name"], st["id"])
@@ -66,9 +101,9 @@ def main(argv=None) -> int:
                 failed += 1
                 continue
             st["lat"], st["lng"] = pt
-        session = PoliteSession(delay_sec=float(settings.get("request_delay_sec", 4)), max_requests=max_req)
+        session.max_requests = session.count + max_req
         try:
-            res = collect_store(st, settings, session, geocoder)
+            res = collect_store(st, settings, session, geocoder, page_cache, area_master)
         except Exception:
             log.exception("収集に失敗: %s", st["id"])
             failed += 1
@@ -102,6 +137,7 @@ def main(argv=None) -> int:
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
                 f.write(body + "\n\n")
     geocoder.save()
+    write_index(a.docs)
     return 1 if failed and failed == len(targets) else 0
 
 

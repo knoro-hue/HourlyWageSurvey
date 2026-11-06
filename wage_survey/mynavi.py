@@ -38,7 +38,19 @@ class AreaOccupations:
     ssm: dict[str, list[str]] = field(default_factory=dict)  # "ss-3" -> ["ss-3/ssm-102", ...]
 
 
+_SITEMAP_CACHE: dict[str, list[str]] = {}
+
+
 def _sitemap_locs(session, url: str) -> list[str]:
+    if url in _SITEMAP_CACHE:
+        return _SITEMAP_CACHE[url]
+    locs = _sitemap_locs_fetch(session, url)
+    if locs:
+        _SITEMAP_CACHE[url] = locs
+    return locs
+
+
+def _sitemap_locs_fetch(session, url: str) -> list[str]:
     r = session.get(url)
     if r is None or r.status_code != 200:
         log.warning("sitemap取得失敗: %s", url)

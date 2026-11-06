@@ -1,36 +1,173 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta http-equiv="refresh" content="0; url=dospara-namba/">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>時給調査ダッシュボード</title>
+<title>ドスパラ全店 時給調査</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500&display=swap">
 <style>
-  :root { --fg:#1d2733; --muted:#5b6775; --line:#dbe3ec; --panel:rgba(255,255,255,.92); --accent:#2f6fb3; }
+  :root {
+    --fg: #1d2733; --muted: #5b6775; --line: #dbe3ec; --panel: rgba(255, 255, 255, 0.93); --grid: #e6ecf2;
+    --ind: #2f6fb3; --dir: #e0782f; --own: #c23b3b; --ok: #1f7a4d; --bad: #c0392b; --mute: #c5d0dc;
+    --sans: "Noto Sans JP", system-ui, sans-serif; --serif: "Shippori Mincho", "Noto Serif JP", serif;
+    color-scheme: light;
+  }
   * { box-sizing: border-box; }
-  body { margin:0; color:var(--fg); font-family:"Noto Sans JP", system-ui, sans-serif; font-size:15px;
-    background-color: #f6f9fc; background-image: linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,.75)), url("assets/bg.svg"); background-size: cover; background-position: center top; background-attachment: fixed; min-height:100vh; }
-  main { max-width:1100px; margin:0 auto; padding:48px max(16px,3vw); display:grid; gap:24px; }
-  h1 { font-family:"Shippori Mincho", serif; font-weight:500; font-size:2rem; margin:0; }
-  p { margin:0; color:var(--muted); }
-  .cards { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr)); }
-  .card { display:grid; gap:8px; padding:20px; background:var(--panel); border:1px solid var(--line); border-radius:10px; color:inherit; text-decoration:none; }
-  .card:hover, .card:focus-visible { border-color:var(--accent); outline:none; }
-  .name { font-weight:700; font-size:1.1rem; }
-  .date { font-size:.85rem; color:var(--muted); }
-  .kv { display:flex; justify-content:space-between; gap:12px; font-size:.9rem; border-top:1px solid var(--line); padding-top:6px; }
-  .kv b { font-variant-numeric:tabular-nums; }
+  body { margin: 0; color: var(--fg); font-family: var(--sans); font-size: 14px; line-height: 1.6;
+    background-color: #f6f9fc; background-image: linear-gradient(rgba(255,255,255,.62), rgba(255,255,255,.78)), url("assets/bg.svg");
+    background-size: cover; background-position: center top; background-attachment: fixed; }
+  main { max-width: 1280px; margin: 0 auto; padding-block: 36px 64px; padding-left: max(16px, 3vw); padding-right: max(16px, 3vw); display: grid; gap: 24px; }
+  h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(1.7rem, 3vw, 2.3rem); margin: 0; }
+  .lede { margin: 6px 0 0; color: var(--muted); max-width: 80ch; font-size: 15px; }
+  .lede b { color: var(--fg); }
+  .tiles { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
+  .tile { display: grid; gap: 4px; padding: 16px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .tile .label { font-size: 12px; color: var(--muted); }
+  .tile .value { font-family: var(--serif); font-size: 1.9rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .tile .note { font-size: 12px; color: var(--muted); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 12px; min-width: 0; }
+  .card h2 { margin: 0; font-size: 16px; font-weight: 500; }
+  .note { margin: 0; font-size: 12px; color: var(--muted); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .controls input, .controls select { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--fg); }
+  .controls input { flex: 1 1 14rem; min-width: 0; }
+  .tablebox { overflow: auto; border-top: 1px solid var(--line); max-height: 70vh; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+  th { position: sticky; top: 0; background: #fff; text-align: left; font-weight: 500; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; z-index: 1; }
+  th button { all: unset; cursor: pointer; }
+  th button:focus-visible { outline: 2px solid var(--ind); outline-offset: 2px; }
+  td { padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td.num, th.num { text-align: right; }
+  tr.row { cursor: pointer; }
+  tr.row:hover td { background: rgba(47, 111, 179, 0.06); }
+  td a { color: var(--fg); font-weight: 500; text-decoration: none; }
+  td a:hover { color: var(--ind); text-decoration: underline; }
+  .neg { color: var(--bad); font-weight: 500; } .pos { color: var(--ok); font-weight: 500; }
+  .pending { color: var(--muted); font-size: 12px; }
+  .gapbar { display: inline-block; width: 90px; height: 10px; position: relative; vertical-align: middle; margin-left: 8px; }
+  .gapbar::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: .5; }
+  .gapbar i { position: absolute; top: 0; height: 100%; border-radius: 2px; }
+  @media (max-width: 760px) { .hide-narrow { display: none; } .gapbar { display: none; } }
 </style>
 </head>
 <body>
 <main>
-  <h1>時給調査ダッシュボード</h1>
-  <p>採用向けに、店舗周辺のアルバイト時給を毎週月曜に自動で集計しています。店舗を選ぶと詳細を表示します。</p>
-  <section class="cards">
-<a class="card" href="dospara-namba/"><span class="name">ドスパラ大阪・なんば店</span><span class="date">調査日 2026-11-06</span><span class="kv"><span>① 自店</span><b>1,250円</b></span><span class="kv"><span>③ 直接競合 中央値</span><b>1,500円</b></span><span class="kv"><span>② 間接競合 中央値</span><b>1,400円</b></span></a>
+  <div>
+    <h1>ドスパラ全店 時給調査</h1>
+    <p class="lede" id="lede">読み込み中…</p>
+  </div>
+
+  <section class="tiles">
+    <div class="tile"><span class="label">調査済みの店舗</span><span class="value" id="t-stores">—</span><span class="note" id="t-stores-note"></span></div>
+    <div class="tile"><span class="label">周辺相場（②中央値）より低い店舗</span><span class="value" id="t-below">—</span><span class="note">自店の募集時給が5km圏の中央値を下回る</span></div>
+    <div class="tile"><span class="label">自店時給の全店中央値</span><span class="value" id="t-own">—</span><span class="note">自社採用サイトに掲載のある店舗</span></div>
+    <div class="tile"><span class="label">周辺相場（②中央値）の全店中央値</span><span class="value" id="t-ind">—</span><span class="note">各店から5km圏の時給中央値</span></div>
   </section>
+
+  <section class="card">
+    <h2>店舗一覧</h2>
+    <p class="note">店舗名を押すと、その店舗のレポートを開きます。差額は「自店の募集時給 − 周辺相場」。赤はマイナス（相場より低い）。見出しを押すと並び替え。</p>
+    <div class="controls">
+      <input id="q" type="search" placeholder="店舗名・都道府県で絞り込み" aria-label="店舗名で絞り込み">
+      <select id="region" aria-label="地域"><option value="">すべての地域</option></select>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr>
+          <th><button type="button" data-sort="name">店舗</button></th>
+          <th class="hide-narrow"><button type="button" data-sort="region">地域</button></th>
+          <th class="num"><button type="button" data-sort="own">① 自店時給</button></th>
+          <th class="num"><button type="button" data-sort="indirect">② 周辺相場（5km）</button></th>
+          <th class="num"><button type="button" data-sort="gap_ind">差額（②比）</button></th>
+          <th class="num"><button type="button" data-sort="direct">③ 直接競合</button></th>
+          <th class="num hide-narrow"><button type="button" data-sort="gap_dir">差額（③比）</button></th>
+          <th class="num hide-narrow"><button type="button" data-sort="postings">周辺求人数</button></th>
+          <th class="hide-narrow"><button type="button" data-sort="run_date">調査日</button></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="note">毎日6時台に、その曜日に割り当てた店舗を自動調査しています（各店舗は週1回更新）。① は自社採用サイト、② ③ はマイナビバイトの掲載求人。集計方法は各店舗のレポート下部を参照。</p>
 </main>
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  const fmt = new Intl.NumberFormat('ja-JP');
+  const yen = (v) => v == null ? '—' : fmt.format(Math.round(v)) + '円';
+  const days = ['月', '火', '水', '木', '金', '土', '日'];
+  let S;
+  try { S = await (await fetch('stores.json', { cache: 'no-store' })).json(); }
+  catch (e) { $('lede').textContent = '店舗データを読み込めませんでした。'; return; }
+  for (const s of S) {
+    s.gap_ind = s.own != null && s.indirect != null ? s.own - s.indirect : null;
+    s.gap_dir = s.own != null && s.direct != null ? s.own - s.direct : null;
+  }
+  const done = S.filter((s) => s.run_date);
+  const med = (a) => { const v = a.filter((x) => x != null).sort((x, y) => x - y); if (!v.length) return null; const m = Math.floor(v.length / 2); return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
+  const below = done.filter((s) => s.gap_ind != null && s.gap_ind < 0);
+  const withOwn = done.filter((s) => s.gap_ind != null);
+  $('t-stores').textContent = `${done.length} / ${S.length}店`;
+  $('t-stores-note').textContent = done.length < S.length ? `残り${S.length - done.length}店は割り当て曜日に順次調査` : '全店調査済み';
+  $('t-below').textContent = withOwn.length ? `${below.length} / ${withOwn.length}店` : '—';
+  $('t-own').textContent = yen(med(done.map((s) => s.own)));
+  $('t-ind').textContent = yen(med(done.map((s) => s.indirect)));
+  const latest = done.map((s) => s.run_date).sort().pop();
+  $('lede').textContent = `ドスパラ${S.length}店舗それぞれの周辺アルバイト時給を、自店の募集時給と比べています。最新の調査日は ${latest || '—'}。`;
+
+  const regions = [...new Set(S.map((s) => s.region).filter(Boolean))];
+  for (const r of regions) { const o = document.createElement('option'); o.value = r; o.textContent = r; $('region').appendChild(o); }
+
+  const maxGap = Math.max(100, ...S.map((s) => Math.abs(s.gap_ind || 0)));
+  const sort = { key: 'gap_ind', dir: 1 };
+  const numKeys = new Set(['own', 'indirect', 'direct', 'gap_ind', 'gap_dir', 'postings']);
+  function cell(tr, text, cls) { const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = text; tr.appendChild(td); return td; }
+  function gapCell(tr, g, bar, extra) {
+    const td = cell(tr, g == null ? '—' : (g > 0 ? '+' : g < 0 ? '−' : '±') + yen(Math.abs(g)), 'num ' + (extra || '') + (g < 0 ? ' neg' : g > 0 ? ' pos' : ''));
+    if (bar && g != null) {
+      const b = document.createElement('span'); b.className = 'gapbar';
+      const i = document.createElement('i'); const w = Math.min(50, Math.abs(g) / maxGap * 50);
+      i.style.width = w + '%'; i.style.left = g < 0 ? (50 - w) + '%' : '50%'; i.style.background = g < 0 ? 'var(--bad)' : 'var(--ok)';
+      b.appendChild(i); td.appendChild(b);
+    }
+  }
+  function draw() {
+    const q = $('q').value.trim(), reg = $('region').value;
+    const rows = S.filter((s) => (!reg || s.region === reg) && (!q || `${s.name} ${s.pref} ${s.region}`.includes(q)));
+    rows.sort((a, b) => {
+      const k = sort.key, x = a[k], y = b[k];
+      if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
+      return (numKeys.has(k) ? x - y : String(x).localeCompare(String(y), 'ja')) * sort.dir;
+    });
+    const tb = $('rows'); tb.replaceChildren();
+    for (const s of rows) {
+      const tr = document.createElement('tr'); tr.className = 'row';
+      const td = document.createElement('td');
+      if (s.run_date) { const a = document.createElement('a'); a.href = `${s.id}/`; a.textContent = s.name; td.appendChild(a); tr.addEventListener('click', (e) => { if (e.target.tagName !== 'A') location.href = `${s.id}/`; }); }
+      else { td.textContent = s.name; const p = document.createElement('span'); p.className = 'pending'; p.textContent = s.shard != null ? `　${days[s.shard % 7]}曜に調査予定` : '　調査待ち'; td.appendChild(p); }
+      tr.appendChild(td);
+      cell(tr, s.region || s.pref || '', 'hide-narrow');
+      cell(tr, s.run_date ? (s.own != null ? yen(s.own) : '求人掲載なし') : '—', 'num');
+      cell(tr, yen(s.indirect), 'num');
+      gapCell(tr, s.gap_ind, true);
+      cell(tr, yen(s.direct), 'num');
+      gapCell(tr, s.gap_dir, false, 'hide-narrow');
+      cell(tr, s.postings != null ? fmt.format(s.postings) + '件' : '—', 'num hide-narrow');
+      cell(tr, s.run_date || '—', 'hide-narrow');
+      tb.appendChild(tr);
+    }
+  }
+  $('q').addEventListener('input', draw);
+  $('region').addEventListener('change', draw);
+  document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => {
+    const k = b.dataset.sort; sort.dir = sort.key === k ? -sort.dir : 1; sort.key = k;
+    document.querySelectorAll('[data-sort]').forEach((o) => o.closest('th').setAttribute('aria-sort', o === b ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none'));
+    draw();
+  }));
+  draw();
+})();
+</script>
 </body>
 </html>

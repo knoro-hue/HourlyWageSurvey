@@ -1,6 +1,19 @@
 # 全店共通の設定
 request_delay_sec: 4          # 同一サイトへのアクセス間隔（秒）。サイト負荷に配慮し短くしないこと
-max_requests_per_store: 450   # 1店舗あたりの最大リクエスト数（4秒間隔で約30分）
+max_requests_per_store: 450   # 1店舗あたりの最大リクエスト数（4秒間隔で約30分。同じ日に取得済みのページは数えない）
+max_requests_area_master: 1500 # エリアマスタ作成時の最大リクエスト数（足りない分は次回続きから）
+
+# 全店共通の店舗設定（stores.yaml の各店舗で上書き可）
+store_defaults:
+  indirect_radius_km: 5
+  direct_radius_km: 10
+  own_match_radius_km: 0.3
+  own_keywords: [ドスパラ, サードウェーブ, THIRDWAVE]
+
+# ①自店: 自社採用サイト（店舗の自動登録時に各店舗へ設定される）
+own_job_site:
+  company: 株式会社サードウェーブ
+  url: https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM
 geocode_cache: data/geocode_cache.json
 manual_jobs_csv: data/manual_jobs.csv   # Indeed・バイトル等の手入力求人
 
