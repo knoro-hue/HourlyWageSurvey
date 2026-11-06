@@ -92,6 +92,21 @@ def _row_values(r: JobRow) -> list:
     return [d[k] for k, _ in ROW_COLUMNS]
 
 
+BENEFIT_COLUMNS = [
+    ("company", "企業"), ("store", "店舗"), ("address_or_station", "所在地・最寄駅"), ("distance_km", "距離km"),
+    ("wage_text", "時給"), ("transport", "交通費"), ("raise", "昇給"), ("promotion", "社員登用"), ("discount", "社員割引"),
+    ("social_insurance", "社会保険"), ("training", "研修"), ("allowances", "加算・手当"), ("features", "その他の特徴"),
+    ("source_site", "情報源"), ("source_url", "URL"), ("source_date", "掲載・更新日"),
+]
+
+
+def benefit_rows(research: dict | None) -> list[dict]:
+    if not research:
+        return []
+    ps = [p for p in research.get("postings") or [] if not p.get("out_of_range")]
+    return sorted(ps, key=lambda p: (p.get("distance_km") is None, p.get("distance_km") or 0))
+
+
 def write_excel(res: StoreResult, path: str, run_date: str):
     rows = sorted(res.rows, key=lambda r: (CLASS_ORDER.get(r.classification, 9), r.distance_km if r.distance_km is not None else 99))
     cls = by_class(rows)
@@ -126,6 +141,12 @@ def write_excel(res: StoreResult, path: str, run_date: str):
     _sheet(wb, "①自店", header, [_row_values(r) for r in cls.get(CLASS_OWN, []) + cls.get(CLASS_OWN_OTHER, [])], w)
     _sheet(wb, "②間接競合", header, [_row_values(r) for r in cls.get(CLASS_INDIRECT, [])], w)
     _sheet(wb, "③直接競合", header, [_row_values(r) for r in cls.get(CLASS_DIRECT, [])], w)
+    if res.research:
+        _sheet(
+            wb, "③待遇比較(Web調査)", [h for _, h in BENEFIT_COLUMNS],
+            [[p.get(k) for k, _ in BENEFIT_COLUMNS] for p in benefit_rows(res.research)],
+            {1: 20, 2: 26, 3: 24, 5: 26, 6: 22, 7: 22, 8: 18, 9: 18, 10: 18, 11: 26, 12: 26, 13: 30, 15: 40}, wrap_cols=(5, 6, 7, 8, 9, 10, 11, 12, 13),
+        )
     _sheet(wb, "④一覧(距離順)", header, [_row_values(r) for r in sorted(rows, key=lambda r: r.distance_km or 0)], w)
     _sheet(
         wb, "⑤業務範囲",

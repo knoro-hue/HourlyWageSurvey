@@ -117,6 +117,11 @@ def main(argv=None) -> int:
             "Excel（①〜⑥シート）": os.path.join(out_dir, f"{st['id']}_{run_date}.xlsx"),
             "CSV（全求人）": os.path.join(out_dir, f"{st['id']}_{run_date}_jobs.csv"),
         }
+        if res.research:
+            import json as _json
+
+            with open(os.path.join(out_dir, "competitor_research.json"), "w", encoding="utf-8") as f:
+                _json.dump(res.research, f, ensure_ascii=False, indent=1)
         write_excel(res, files["Excel（①〜⑥シート）"], run_date)
         write_csv(res, files["CSV（全求人）"])
         md = os.path.join(out_dir, "summary.md")

@@ -107,6 +107,7 @@ jobs:
         run: python -m pytest -q tests
       - name: 時給調査を実行
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SHARD: ${{ matrix.shard }}
           STORE: ${{ github.event.inputs.store }}
           MAXREQ: ${{ github.event.inputs.max_requests }}

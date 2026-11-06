@@ -7,7 +7,7 @@ import os
 from dataclasses import dataclass, field
 
 from . import areas as areas_mod
-from . import mynavi, snar
+from . import competitor_research, mynavi, snar
 from .geo import haversine_km
 from .records import CLASS_DIRECT, CLASS_INDIRECT, CLASS_OWN, JobRow, build_rows, nfkc
 
@@ -35,6 +35,7 @@ class StoreResult:
     requests: int = 0
     budget_exhausted: bool = False
     areas: list[str] = field(default_factory=list)
+    research: dict | None = None
 
 
 def _specificity(occ_path: str) -> int:
@@ -136,6 +137,13 @@ def collect_store(store: dict, settings: dict, session, geocoder, page_cache: di
 
     res.rows += snar.own_rows(store, session)
     res.rows += load_manual_rows(store, settings, geocoder)
+    rcfg = settings.get("competitor_research") or {}
+    if rcfg.get("enabled"):
+        own = next((r.hourly_min for r in res.rows if r.classification == CLASS_OWN and r.hourly_min), None) or store.get("own_hourly_wage_manual")
+        known = [f"{r.company} {r.shop}（{r.wage_text}）" for r in res.rows if r.classification == CLASS_DIRECT]
+        res.research = competitor_research.research_store(store, own, known, rcfg)
+        if res.research:
+            res.rows += research_rows(store, res.research, geocoder, r_dir)
     res.requests = session.count - start_requests
     return res
 
@@ -186,4 +194,52 @@ def load_manual_rows(store: dict, settings: dict, geocoder) -> list[JobRow]:
                 work_content=nfkc(r.get("work_content")), publication_start=(r.get("checked_date") or "").strip(),
                 publication_end="", matched_by="手入力",
             ))
+    return out
+
+
+def _locate(text: str, store: dict, geocoder):
+    """Web 調査の「所在地または最寄駅」から座標を推定"""
+    t = nfkc(text).strip()
+    if not t or t == "記載なし":
+        return None, ""
+    pref = store.get("prefecture_label", "")
+    import re as _re
+
+    m = _re.search(r"([^\s、,/（(]+?)駅", t)
+    if _re.search(r"[市区町村郡]", t):
+        pt = geocoder.geocode(t if t.startswith(pref) or _re.match(r"^\S+?[都道府県]", t) else pref + t)
+        if pt:
+            return pt, "Web調査の所在地"
+    if m:
+        pt = geocoder.station(m.group(1), pref)
+        if pt:
+            return pt, "Web調査の最寄駅"
+    return None, ""
+
+
+def research_rows(store: dict, research: dict, geocoder, radius_km: float) -> list[JobRow]:
+    out = []
+    for i, p in enumerate(research.get("postings") or []):
+        pt, how = _locate(p.get("address_or_station", ""), store, geocoder)
+        dist = round(haversine_km(store["lat"], store["lng"], pt[0], pt[1]), 2) if pt else None
+        p["distance_km"] = dist
+        if dist is not None and dist > radius_km:
+            p["out_of_range"] = True
+            continue
+        lo, hi = p.get("hourly_min"), p.get("hourly_max")
+        work = "／".join(f"{k}:{p.get(v)}" for k, v in (("交通費", "transport"), ("昇給", "raise"), ("登用", "promotion"),
+                         ("社割", "discount"), ("社保", "social_insurance"), ("研修", "training"), ("加算", "allowances"),
+                         ("特徴", "features")) if p.get(v) and p.get(v) != "記載なし")
+        if "マイナビバイト" in (p.get("source_site") or ""):
+            continue  # 一覧の行はマイナビバイト自動取得分と重複するため追加しない（待遇比較表には残す）
+        out.append(JobRow(
+            store_id=store["id"], classification=CLASS_DIRECT, site=p.get("source_site") or "Web調査",
+            job_id=f"web-{i + 1}", url=p.get("source_url") or "", company=nfkc(p.get("company")), shop=nfkc(p.get("store")),
+            occupation="店舗スタッフ（Web調査）", category="(Web調査)", employment="アルバイト・パート",
+            wage_type="時給" if lo else "", wage_min=float(lo) if lo else None, wage_max=float(hi) if hi else None,
+            wage_text=nfkc(p.get("wage_text")), hourly_min=float(lo) if lo else None, hourly_max=float(hi) if hi else None,
+            address=nfkc(p.get("address_or_station")), station="", lat=pt[0] if pt else None, lng=pt[1] if pt else None,
+            location_method=how or "位置不明（Web調査）", distance_km=dist, shift="", work_content=work,
+            publication_start=p.get("source_date") or "", publication_end="", matched_by="Web調査（Claude）",
+        ))
     return out
