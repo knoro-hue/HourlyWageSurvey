@@ -110,7 +110,7 @@ def sync(session, geocoder, stores_path: str, snar_url: str, company: str) -> li
     cfg["stores"] = out
     with open(stores_path, "w", encoding="utf-8") as f:
         f.write("# 調査対象店舗（python -m wage_survey.main --sync-stores で公式サイトから自動更新）\n")
-        f.write("# shard: 調査する曜日（0=月 … 6=日）。手で変えた値は次回の自動更新でも維持されます\n")
+        f.write("# shard: 調査グループ（0〜6、日曜にグループ順に実行）。手で変えた値は次回の自動更新でも維持されます\n")
         yaml.safe_dump(cfg, f, allow_unicode=True, sort_keys=False, width=200)
     log.info("店舗設定を更新: %s（曜日別 %s）", stores_path, load)
     return out

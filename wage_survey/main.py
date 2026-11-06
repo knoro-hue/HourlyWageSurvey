@@ -43,7 +43,7 @@ def main(argv=None) -> int:
     ap.add_argument("--repo", default="knoro-hue/HourlyWageSurvey", help="ダウンロードリンク用のリポジトリ名")
     ap.add_argument("--max-requests", type=int, default=None, help="店舗あたりの最大リクエスト数（上書き）")
     ap.add_argument("--date", default=None, help="レポート日付 YYYY-MM-DD（省略時は今日 JST）")
-    ap.add_argument("--shard", default=None, help="この曜日番号（0=月…6=日）の店舗だけ調査。today で今日（JST）")
+    ap.add_argument("--shard", default=None, help="この店舗グループ（0〜6）だけ調査。all で全店、today で今日の曜日番号")
     ap.add_argument("--sync-stores", action="store_true", help="公式サイトの店舗一覧から config/stores.yaml を更新して終了")
     ap.add_argument("--build-areas", action="store_true", help="マイナビバイトのエリアマスタを作成・更新して終了")
     ap.add_argument("--areas", default="data/mynavi_areas.json")
@@ -80,9 +80,10 @@ def main(argv=None) -> int:
     else:
         targets = [s for s in stores if s.get("enabled", True)]
         if a.shard is not None:
-            shard = dt.datetime.now(JST).weekday() if a.shard == "today" else int(a.shard)
-            targets = [s for s in targets if int(s.get("shard", 0)) % 7 == shard]
-            log.info("曜日 %d の店舗: %s", shard, ", ".join(s["id"] for s in targets) or "なし")
+            if a.shard != "all":
+                shard = dt.datetime.now(JST).weekday() if a.shard == "today" else int(a.shard)
+                targets = [s for s in targets if int(s.get("shard", 0)) % 7 == shard]
+            log.info("対象店舗(%s): %s", a.shard, ", ".join(s["id"] for s in targets) or "なし")
     if not targets:
         log.warning("対象店舗がありません（--store / --shard / enabled を確認）")
         return 0

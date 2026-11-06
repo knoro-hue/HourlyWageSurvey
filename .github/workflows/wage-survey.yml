@@ -2,8 +2,8 @@ name: 時給調査（定期実行）
 
 on:
   schedule:
-    # 毎日 06:17 JST（= 21:17 UTC）。その曜日に割り当てた店舗を調査（各店舗は週1回）
-    - cron: "17 21 * * *"
+    # 毎週日曜 02:17 JST（= 土曜 17:17 UTC）に全店を調査。店舗グループごとに順番に実行し、日曜の昼頃までに完了
+    - cron: "17 17 * * 6"
     # 毎月2日 03:23 JST：店舗一覧とエリアマスタを更新
     - cron: "23 18 1 * *"
   workflow_dispatch:
@@ -14,9 +14,9 @@ on:
         options: [survey, sync-stores, build-areas, setup-all]
         default: survey
       shard:
-        description: "survey の対象曜日（today / all / 0〜6）"
+        description: "survey の対象（all＝全店 / 0〜6＝店舗グループ番号）"
         required: false
-        default: today
+        default: all
       store:
         description: "店舗IDを指定する場合（空欄なら曜日で選ぶ）"
         required: false
@@ -50,7 +50,7 @@ jobs:
         run: |
           task="${TASK:-survey}"
           if [ "$EVENT" = "schedule" ]; then
-            if [ "$SCHED" = "23 18 1 * *" ]; then task=setup; else task=survey; fi
+            if [ "$SCHED" = "23 18 1 * *" ]; then task=setup; else task=survey; SHARD=all; fi
           fi
           if [ "$task" = "setup-all" ]; then task=setup-all; fi
           shards='["today"]'
