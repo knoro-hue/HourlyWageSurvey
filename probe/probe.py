@@ -34,5 +34,5 @@ for u in URLS:
                        title=(t.group(1).decode('utf8', 'ignore')[:120] if t else ''))
         except Exception as e:
             rec['error'] = str(e)[:200]
-    res.append(rec); print(rec, flush=True); time.sleep(3)
+    res.append(rec); print(rec, flush=True); time.sleep(2)
 json.dump(res, open('out/index.json', 'w'), ensure_ascii=False, indent=1)
