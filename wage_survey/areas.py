@@ -42,6 +42,30 @@ NEIGHBORS = {
 }
 
 
+_LABEL_PREFIX = re.compile(r"^(23区全体|東京都下（23区外）|.{1,6}?エリア)")
+
+
+def clean_label(label: str) -> str:
+    """マイナビバイトのエリア名から地域グループ名を除く（例: 23区全体千代田区 → 千代田区）"""
+    return _LABEL_PREFIX.sub("", label or "")
+
+
+def fill_missing_coords(master: dict, geocoder) -> int:
+    """代表座標が無いエリアを、整えた名称で引き直す"""
+    n = 0
+    for a in master.values():
+        if a.get("lat") is not None or not a.get("label"):
+            continue
+        name = clean_label(a["label"])
+        if not name:
+            continue
+        pt = geocoder.geocode(SLUG_TO_PREF.get(a["pref"], "") + name)
+        if pt:
+            a["lat"], a["lng"] = pt
+            n += 1
+    return n
+
+
 def pref_of(address: str) -> tuple[str, str]:
     for label, slug in PREF_SLUGS.items():
         if address.startswith(label):
@@ -95,7 +119,7 @@ def build_master(session, geocoder, prefs: list[str], path: str, max_age_days: i
         if page is None or not page.area_label:
             continue
         pref_label = SLUG_TO_PREF.get(p.split("/")[0], "")
-        pt = geocoder.geocode(pref_label + page.area_label)
+        pt = geocoder.geocode(pref_label + clean_label(page.area_label))
         master[p] = {
             "pref": p.split("/")[0], "label": page.area_label, "count": page.count, "kind": k,
             "has_towns": p in town_parents, "lat": pt[0] if pt else None, "lng": pt[1] if pt else None,
@@ -107,6 +131,7 @@ def build_master(session, geocoder, prefs: list[str], path: str, max_age_days: i
     for p in town_parents:
         if p in master:
             master[p]["has_towns"] = True
+    log.info("代表座標の補完: %d 件", fill_missing_coords(master, geocoder))
     save_master(master, path)
     geocoder.save()
     return master
@@ -122,7 +147,8 @@ def select_areas(store: dict, master: dict, radius_km: float, town_buffer_km: fl
     for p, a in master.items():
         if a.get("has_towns"):
             continue
-        own_area = bool(a.get("label")) and a["pref"] == slug and addr_wo_pref.startswith(a["label"])
+        lab = clean_label(a.get("label", ""))
+        own_area = bool(lab) and a["pref"] == slug and addr_wo_pref.startswith(lab)
         if own_area:
             picked.append((0.0, p))
             continue

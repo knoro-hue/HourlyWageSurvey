@@ -90,6 +90,9 @@ def main(argv=None) -> int:
     run_date = a.date or dt.datetime.now(JST).strftime("%Y-%m-%d")
     max_req = a.max_requests or settings.get("max_requests_per_store", 450)
     area_master = areas_mod.load_master(a.areas)
+    if area_master and areas_mod.fill_missing_coords(area_master, geocoder):
+        areas_mod.save_master(area_master, a.areas)
+        geocoder.save()
     session = PoliteSession(delay_sec=delay)
     page_cache: dict = {}
     failed = 0

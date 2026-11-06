@@ -77,3 +77,17 @@ def test_snar_parse():
     jobs = parse_jobs(html)
     assert len(jobs) == 1 and "なんば店" in jobs[0]["title"] and "なんば店" in jobs[0]["location"]
     assert parse_wage_text(jobs[0]["body"])[:2] == (1250.0, None)
+
+
+def test_area_label_and_selection():
+    from wage_survey.areas import clean_label, select_areas
+    from wage_survey.geo import is_specific_match
+
+    assert clean_label("23区全体千代田区") == "千代田区"
+    assert clean_label("東京都下（23区外）八王子市") == "八王子市"
+    assert clean_label("道東エリア阿寒郡") == "阿寒郡"
+    assert clean_label("大阪市浪速区") == "大阪市浪速区"
+    assert is_specific_match("福岡県糟屋郡", "福岡県糟屋郡粕屋町")
+    master = {"tokyo/city-32": {"pref": "tokyo", "label": "23区全体千代田区", "lat": None, "lng": None, "kind": "city"}}
+    st = {"address": "東京都千代田区外神田3-11-2", "lat": 35.70, "lng": 139.77}
+    assert select_areas(st, master, 5) == ["tokyo/city-32"]

@@ -27,6 +27,8 @@ def is_specific_match(query: str, title: str) -> bool:
     t = _strip_pref(unicodedata.normalize("NFKC", title or ""))
     if not t:
         return False
+    if q and t.startswith(q):  # 郡など、より詳しい住所が返る場合
+        return True
     m = _MUNI_RE.match(t)
     return bool(m) and m.group(1) in q
 
