@@ -1,9 +1,5 @@
-https://baito.mynavi.jp/sitemap/town_ss_index.xml
-https://baito.mynavi.jp/sitemap/town_kd_index.xml
-https://baito.mynavi.jp/kw/keyword-sitemap-index.xml
-https://baito.mynavi.jp/osaka/city-262/town-144/ss-102/
-https://baito.mynavi.jp/osaka/city-262/town-144/ssm-3/
-https://baito.mynavi.jp/osaka/city-262/town-144/sss-102/
-https://baito.mynavi.jp/osaka/city-262/town-144/ss-3-102/
-https://baito.mynavi.jp/osaka/city-262/town-160/ss-102/
-https://baito.mynavi.jp/osaka/city-262/town-144/ss-102/?sortType=wageHourly
+https://baito.mynavi.jp/sitemap/urlsets/town-ss-001.xml
+https://baito.mynavi.jp/kw/keyword-sitemap-top.xml
+https://baito.mynavi.jp/osaka/city-262/town-144/ss-3/
+https://baito.mynavi.jp/osaka/city-262/town-144/ss-3-93/
+https://baito.mynavi.jp/osaka/city-262/town-160/ss-3-102/
