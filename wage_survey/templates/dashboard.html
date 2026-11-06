@@ -255,7 +255,7 @@
       const v = S.own.median, b = bins[idx(v)];
       const ox = x(b.x0) + ((Math.min(v, hiCap) - b.x0) / step) * x.step();
       svg.append('line').attr('x1', ox).attr('x2', ox).attr('y1', 14).attr('y2', H - 28).attr('stroke', 'var(--own)').attr('stroke-width', 2);
-      svg.append('text').attr('x', ox + 6).attr('y', 24).attr('font-size', 12).attr('fill', 'var(--own)').text(`自店 ${yen(v)}`);
+      svg.append('text').attr('x', ox + 6).attr('y', 24).attr('font-size', 12).attr('fill', 'var(--own)').attr('font-weight', 700).attr('stroke', '#fff').attr('stroke-width', 4).attr('paint-order', 'stroke').text(`自店 ${yen(v)}`);
     }
     svg.append('line').attr('x1', ml).attr('x2', W - 6).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', 'var(--axis)');
     const tip = tipFor(el);
