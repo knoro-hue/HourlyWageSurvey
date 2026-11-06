@@ -1,5 +1,0 @@
-https://baito.mynavi.jp/sitemap/urlsets/town-ss-001.xml
-https://baito.mynavi.jp/kw/keyword-sitemap-top.xml
-https://baito.mynavi.jp/osaka/city-262/town-144/ss-3/
-https://baito.mynavi.jp/osaka/city-262/town-144/ss-3-93/
-https://baito.mynavi.jp/osaka/city-262/town-160/ss-3-102/

@@ -1,0 +1,43 @@
+# 調査対象店舗。全店展開時はここに店舗を追加する（README参照）
+stores:
+  - id: dospara-namba
+    name: ドスパラ大阪・なんば店
+    enabled: true
+    address: 大阪府大阪市浪速区日本橋3丁目6-22 布谷ビル1F～4F
+    lat: 34.663044          # 国土地理院 住所検索APIの結果
+    lng: 135.505203
+    prefecture_label: 大阪府
+    own_keywords: [ドスパラ, サードウェーブ, THIRDWAVE]
+    own_match_radius_km: 0.3     # この距離以内の自社求人を「①自店」とみなす
+    own_hourly_wage_manual: null # 求人サイトに無い場合の自店時給（例: 1250）
+    indirect_radius_km: 5        # ②間接競合の範囲
+    direct_radius_km: 10         # ③直接競合の範囲
+    mynavi:
+      # ②間接競合: 店舗から5km圏に掛かる区（マイナビバイトのエリアパス）
+      indirect_areas:
+        - osaka/city-262/town-144   # 浪速区
+        - osaka/city-262/town-160   # 中央区
+        - osaka/city-262/town-140   # 西区
+        - osaka/city-262/town-143   # 天王寺区
+        - osaka/city-262/town-151   # 阿倍野区
+        - osaka/city-262/town-154   # 西成区
+        - osaka/city-262/town-142   # 大正区
+        - osaka/city-262/town-141   # 港区
+        - osaka/city-262/town-159   # 北区
+        - osaka/city-262/town-138   # 福島区
+        - osaka/city-262/town-148   # 生野区
+        - osaka/city-262/town-147   # 東成区
+        - osaka/city-262/town-137   # 都島区
+        - osaka/city-262/town-150   # 城東区
+        - osaka/city-262/town-152   # 住吉区
+        - osaka/city-262/town-153   # 東住吉区
+      # ③直接競合: まず大阪市全体で検索し、30件超なら下記の区に分割
+      direct_areas:
+        - osaka/city-262
+      direct_fallback_areas:
+        - osaka/city-262/town-144
+        - osaka/city-262/town-160
+        - osaka/city-262/town-159
+        - osaka/city-262/town-140
+        - osaka/city-262/town-143
+        - osaka/city-262/town-151

@@ -1,0 +1,65 @@
+name: 時給調査（定期実行）
+
+on:
+  schedule:
+    # 毎週月曜 06:17 JST（= 日曜 21:17 UTC）
+    - cron: "17 21 * * 0"
+  workflow_dispatch:
+    inputs:
+      store:
+        description: "店舗ID（空欄で enabled な全店舗）"
+        required: false
+        default: ""
+      max_requests:
+        description: "1店舗あたり最大リクエスト数（空欄で設定値）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wage-survey
+  cancel-in-progress: false
+
+jobs:
+  survey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 依存インストール
+        run: pip install -r requirements.txt pytest
+
+      - name: 単体テスト
+        run: python -m pytest -q tests
+
+      - name: 時給調査を実行
+        env:
+          STORE: ${{ github.event.inputs.store }}
+          MAXREQ: ${{ github.event.inputs.max_requests }}
+        run: |
+          args=()
+          if [ -n "$STORE" ]; then args+=(--store "$STORE"); fi
+          if [ -n "$MAXREQ" ]; then args+=(--max-requests "$MAXREQ"); fi
+          python -m wage_survey.main "${args[@]}"
+
+      - name: 結果をコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports data/geocode_cache.json
+          if git diff --cached --quiet; then
+            echo "変更なし"; exit 0
+          fi
+          git commit -m "時給調査レポート $(TZ=Asia/Tokyo date +%F)"
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            sleep 10
+          done

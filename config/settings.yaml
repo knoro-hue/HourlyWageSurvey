@@ -1,0 +1,67 @@
+# 全店共通の設定
+request_delay_sec: 4          # 同一サイトへのアクセス間隔（秒）。サイト負荷に配慮し短くしないこと
+max_requests_per_store: 450   # 1店舗あたりの最大リクエスト数（4秒間隔で約30分）
+geocode_cache: data/geocode_cache.json
+manual_jobs_csv: data/manual_jobs.csv   # Indeed・バイトル等の手入力求人
+
+mynavi:
+  # 直接競合として広域検索する職種パス（家電量販店）
+  direct_occupation_paths:
+    - ss-3/ssm-102
+  # 30件超の大分類を中分類に分割するときの優先順（ss-3 = 販売・接客・サービス）
+  drill_priority_ss: [ss-3, ss-1, ss-10, ss-13]
+
+# ③直接競合（家電量販・パソコン関連小売）の判定ルール
+direct_competitor:
+  categories: [家電量販店]
+  brand_keywords:
+    - ヨドバシ
+    - ビックカメラ
+    - コジマ
+    - ソフマップ
+    - エディオン
+    - EDION
+    - 100満ボルト
+    - ジョーシン
+    - Joshin
+    - 上新電機
+    - ケーズデンキ
+    - ヤマダ電機
+    - ヤマダデンキ
+    - テックランド
+    - ベスト電器
+    - ノジマ
+    - PC DEPOT
+    - ピーシーデポ
+    - パソコン工房
+    - ユニットコム
+    - グッドウィル
+    - ツクモ
+    - TSUKUMO
+    - じゃんぱら
+    - イオシス
+    - PCワンズ
+    - パソコンショップアーク
+  title_keywords:
+    - 家電量販
+    - 家電販売
+    - 家電製品
+    - 家電売場
+    - パソコン販売
+    - PC販売
+    - PCショップ
+    - パソコンショップ
+    - パソコン専門店
+    - PC専門店
+    - PCパーツ
+    - パソコン修理
+    - PC修理
+    - PC組立
+    - パソコン組立
+    - ゲーミングPC
+  content_keywords:
+    - 家電量販店
+    - パソコンショップ
+    - PCショップ
+    - PCパーツ
+    - ゲーミングPC
