@@ -48,6 +48,16 @@
   - 判定ルールは `config/settings.yaml` の `direct_competitor` で編集できます。
 - **時給集計**：各求人の下限額。日給・月給は勤務時間が不明なため集計から除外（一覧には掲載）。
 
+## ③直接競合の待遇比較（Indeed・バイトル・公式採用ページ）
+
+Claude（Anthropic API）のウェブ検索・ページ取得で、店舗から10km圏の家電量販・PCショップ・中古PC/スマホ店の求人を調べ、
+時給・交通費・昇給・社員登用・社員割引・社会保険・研修・加算を出典URL付きで表にします（各店レポートとExcel「③待遇比較(Web調査)」）。
+
+- 有効にするには、GitHub の **Settings → Secrets and variables → Actions → New repository secret** で
+  名前 `ANTHROPIC_API_KEY`、値に Anthropic の API キーを登録します。未登録なら自動でスキップされます。
+- 設定は `config/settings.yaml` の `competitor_research`（モデル、検索回数の上限など）。
+- 費用の目安（推測）：1店舗あたり約1〜2ドル、全42店で週50〜80ドル程度。検索回数・effort を下げると減ります。
+
 ## 自動で取れない媒体の扱い（Indeed・バイトル・タウンワーク等）
 
 Indeed・タウンワーク（Indeed統合）・バイトル等は利用規約やアクセス制限によって自動取得の対象外です。必要な求人は
