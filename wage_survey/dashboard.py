@@ -15,7 +15,7 @@ from collections import defaultdict
 
 from .collector import CLASS_OWN_OTHER, StoreResult
 from .records import CLASS_DIRECT, CLASS_INDIRECT, CLASS_OWN
-from .report import BENEFIT_COLUMNS, benefit_rows, hourly_values, stats
+from .report import BENEFIT_COLUMNS, benefit_rates, benefit_rows, hourly_values, stats
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 COLUMNS = ["class", "distance_km", "company", "shop", "occupation", "category", "wage_type",
@@ -57,7 +57,8 @@ def build_data(res: StoreResult, run_date: str, history_path: str) -> dict:
         "columns": COLUMNS,
         "rows": rows,
         "areas": areas,
-        "benefits": [{k: p.get(k) for k, _ in BENEFIT_COLUMNS} for p in benefit_rows(res.research)],
+        "benefits": [{k: p.get(k) for k, _ in BENEFIT_COLUMNS} for p in benefit_rows(res)],
+        "benefit_rates": benefit_rates(res.rows),
         "research": {k: (res.research or {}).get(k) for k in ("researched_at", "model", "notes")} if res.research else None,
         "history": history,
         "notes": {

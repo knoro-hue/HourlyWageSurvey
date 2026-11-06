@@ -41,6 +41,7 @@ class JobRow:
     publication_start: str
     publication_end: str
     matched_by: str = ""
+    benefits: dict | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -128,6 +129,53 @@ def resolve_location(shop: dict, job: dict, geocoder, pref_label: str) -> tuple[
         if pt:
             return pt[0], pt[1], "エリア中心から推定", f"{a2}{a3}"
     return None, None, "不明", addr
+
+
+NA = "記載なし"
+BENEFIT_KEYS = ("transport", "raise", "promotion", "discount", "social_insurance", "training", "allowances", "features")
+_EXTRA_TAGS = ("賞与・報奨金・慰労金あり", "食事補助あり", "まかない(食事)あり", "入社祝い金あり", "日払い／週払い", "給与前払い可",
+               "制服貸与", "社員食堂あり", "資格取得支援", "車通勤可", "寮・社宅あり", "託児所あり")
+
+
+def mynavi_benefits(job: dict, wage_text: str) -> dict:
+    """マイナビバイトの「こだわり条件」と交通費欄から待遇を取り出す（無料・追加アクセスなし）"""
+    tags = {nfkc(k.get("label")) for k in job.get("kodawariList") or [] if k.get("label")}
+    has = lambda t: nfkc(t) in tags  # noqa: E731
+    travel = ((job.get("travelExpensesSupply") or {}).get("label")) or ("支給" if has("交通費支給") else NA)
+    allow = []
+    m = re.search(r"[（(]([^）)]*(?:時以降|深夜|土日|祝|手当|UP|アップ|加算)[^）)]*)[）)]", nfkc(wage_text))
+    if m:
+        allow.append(m.group(1))
+    return {
+        "transport": travel,
+        "raise": "あり" if has("昇給あり") else NA,
+        "promotion": "あり" if has("社員登用あり") else NA,
+        "discount": "あり" if has("社員割引あり") else NA,
+        "social_insurance": "完備" if has("社会保険完備") else NA,
+        "training": "研修制度あり" if has("研修制度あり") else NA,
+        "allowances": "、".join(allow) or NA,
+        "features": "、".join(t for t in _EXTRA_TAGS if has(t)) or NA,
+    }
+
+
+def text_benefits(text: str) -> dict:
+    """求人本文（自社採用サイトなど）から待遇の記載を拾う"""
+    t = nfkc(text)
+
+    def find(*words):
+        for w in words:
+            i = t.find(w)
+            if i >= 0:
+                end = t.find("\n", i)
+                frag = t[i: end if end > 0 else len(t)].strip(" ・-")
+                return frag[:60]
+        return NA
+
+    return {
+        "transport": find("交通費"), "raise": find("昇給"), "promotion": find("社員登用", "正社員登用", "社員へ"),
+        "discount": find("社員割引", "社割", "割引"), "social_insurance": find("社会保険", "社保"),
+        "training": find("研修"), "allowances": find("手当", "深夜", "加算"), "features": NA,
+    }
 
 
 def to_hourly(wage_type: str, lo: float | None, hi: float | None) -> tuple[float | None, float | None]:
@@ -231,6 +279,7 @@ def build_rows(job: dict, category: str, store_cfg: dict, settings: dict, geocod
             publication_start=(job.get("publicationStartDate") or "")[:10],
             publication_end=(job.get("publicationEndDate") or "")[:10],
             matched_by=why,
+            benefits=mynavi_benefits(job, wtext),
         )
         if best is None or (dist is not None and (best.distance_km is None or dist < best.distance_km)):
             best = row

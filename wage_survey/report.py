@@ -93,18 +93,49 @@ def _row_values(r: JobRow) -> list:
 
 
 BENEFIT_COLUMNS = [
-    ("company", "企業"), ("store", "店舗"), ("address_or_station", "所在地・最寄駅"), ("distance_km", "距離km"),
+    ("class", "区分"), ("company", "企業"), ("store", "店舗"), ("address_or_station", "所在地・最寄駅"), ("distance_km", "距離km"),
     ("wage_text", "時給"), ("transport", "交通費"), ("raise", "昇給"), ("promotion", "社員登用"), ("discount", "社員割引"),
     ("social_insurance", "社会保険"), ("training", "研修"), ("allowances", "加算・手当"), ("features", "その他の特徴"),
     ("source_site", "情報源"), ("source_url", "URL"), ("source_date", "掲載・更新日"),
 ]
 
 
-def benefit_rows(research: dict | None) -> list[dict]:
-    if not research:
-        return []
-    ps = [p for p in research.get("postings") or [] if not p.get("out_of_range")]
-    return sorted(ps, key=lambda p: (p.get("distance_km") is None, p.get("distance_km") or 0))
+def benefit_rows(res) -> list[dict]:
+    """①自店と③直接競合の待遇比較の行（求人データ由来＋Web調査があればその分）"""
+    out = []
+    for r in res.rows:
+        if r.classification not in (CLASS_OWN, CLASS_DIRECT) or r.distance_km is None and r.classification != CLASS_OWN:
+            continue
+        b = r.benefits or {}
+        if not b:
+            continue
+        out.append({
+            "class": r.classification, "company": r.company, "store": r.shop, "address_or_station": r.station or r.address,
+            "distance_km": r.distance_km, "wage_text": r.wage_text, **{k: b.get(k, "記載なし") for k in
+            ("transport", "raise", "promotion", "discount", "social_insurance", "training", "allowances", "features")},
+            "source_site": r.site, "source_url": r.url, "source_date": r.publication_start,
+        })
+    for p in (res.research or {}).get("postings") or []:
+        if not p.get("out_of_range"):
+            out.append({"class": CLASS_DIRECT, **p})
+    return sorted(out, key=lambda p: (p["class"] != CLASS_OWN, p.get("distance_km") is None, p.get("distance_km") or 0))
+
+
+BENEFIT_TAGS = [("transport", "交通費支給"), ("raise", "昇給あり"), ("promotion", "社員登用あり"), ("discount", "社員割引あり"),
+                ("social_insurance", "社会保険完備"), ("training", "研修制度あり")]
+
+
+def benefit_rates(rows) -> list[dict]:
+    """②③それぞれで、各待遇を明記している求人の割合"""
+    out = []
+    for cls in (CLASS_DIRECT, CLASS_INDIRECT):
+        rs = [r for r in rows if r.classification == cls and r.benefits]
+        if not rs:
+            continue
+        for k, label in BENEFIT_TAGS:
+            n = sum(1 for r in rs if (r.benefits.get(k) or "記載なし") != "記載なし")
+            out.append({"class": cls, "item": label, "n": n, "total": len(rs), "rate": round(n / len(rs), 3)})
+    return out
 
 
 def write_excel(res: StoreResult, path: str, run_date: str):
@@ -141,12 +172,11 @@ def write_excel(res: StoreResult, path: str, run_date: str):
     _sheet(wb, "①自店", header, [_row_values(r) for r in cls.get(CLASS_OWN, []) + cls.get(CLASS_OWN_OTHER, [])], w)
     _sheet(wb, "②間接競合", header, [_row_values(r) for r in cls.get(CLASS_INDIRECT, [])], w)
     _sheet(wb, "③直接競合", header, [_row_values(r) for r in cls.get(CLASS_DIRECT, [])], w)
-    if res.research:
-        _sheet(
-            wb, "③待遇比較(Web調査)", [h for _, h in BENEFIT_COLUMNS],
-            [[p.get(k) for k, _ in BENEFIT_COLUMNS] for p in benefit_rows(res.research)],
-            {1: 20, 2: 26, 3: 24, 5: 26, 6: 22, 7: 22, 8: 18, 9: 18, 10: 18, 11: 26, 12: 26, 13: 30, 15: 40}, wrap_cols=(5, 6, 7, 8, 9, 10, 11, 12, 13),
-        )
+    _sheet(
+        wb, "①③待遇比較", [h for _, h in BENEFIT_COLUMNS],
+        [[p.get(k) for k, _ in BENEFIT_COLUMNS] for p in benefit_rows(res)],
+        {1: 12, 2: 20, 3: 26, 4: 24, 6: 26, 7: 22, 8: 22, 9: 18, 10: 18, 11: 18, 12: 26, 13: 26, 14: 30, 16: 40}, wrap_cols=(6, 7, 8, 9, 10, 11, 12, 13, 14),
+    )
     _sheet(wb, "④一覧(距離順)", header, [_row_values(r) for r in sorted(rows, key=lambda r: r.distance_km or 0)], w)
     _sheet(
         wb, "⑤業務範囲",

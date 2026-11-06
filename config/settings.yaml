@@ -17,7 +17,7 @@ own_job_site:
 # ③直接競合の待遇調査（Claude のウェブ検索で Indeed・バイトル・各社公式採用ページ等を調べる）
 # GitHub の Secrets に ANTHROPIC_API_KEY を登録すると有効になる（未登録なら自動でスキップ）
 competitor_research:
-  enabled: true
+  enabled: false        # 有料のため停止中（true にすると有効）
   model: claude-opus-5-5
   effort: medium        # low / medium / high。上げるほど丁寧だが費用増
   max_searches: 15      # 1店舗あたりのウェブ検索回数の上限

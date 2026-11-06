@@ -9,7 +9,7 @@ import html as htmllib
 import logging
 import re
 
-from .records import CLASS_OWN, JobRow, nfkc
+from .records import CLASS_OWN, JobRow, nfkc, text_benefits
 
 log = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ def own_rows(store: dict, session) -> list[JobRow]:
                 hourly_min=lo, hourly_max=hi, address=store.get("address", ""), station="",
                 lat=store["lat"], lng=store["lng"], location_method="店舗所在地", distance_km=0.0,
                 shift="", work_content=j["body"], publication_start="", publication_end="",
-                matched_by=f"自社採用サイト:{j['location']}",
+                matched_by=f"自社採用サイト:{j['location']}", benefits=text_benefits(j["body"]),
             ))
     if not out and store.get("own_job_sites"):
         log.warning("自社採用サイトに自店の求人が見つかりません（match を確認）: %s", store["id"])
