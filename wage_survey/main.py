@@ -47,6 +47,8 @@ def main(argv=None) -> int:
     ap.add_argument("--sync-stores", action="store_true", help="公式サイトの店舗一覧から config/stores.yaml を更新して終了")
     ap.add_argument("--build-areas", action="store_true", help="マイナビバイトのエリアマスタを作成・更新して終了")
     ap.add_argument("--areas", default="data/mynavi_areas.json")
+    ap.add_argument("--set-enabled", default=None, help="調査対象にする店舗ID（カンマ区切り）を保存して終了")
+    ap.add_argument("--only", default=None, help="この店舗ID（カンマ区切り）に限って調査（--shard と併用可）")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if a.verbose else logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -55,6 +57,15 @@ def main(argv=None) -> int:
     geo_session = PoliteSession(delay_sec=1.0)
     geocoder = Geocoder(geo_session, settings.get("geocode_cache", "data/geocode_cache.json"))
     delay = float(settings.get("request_delay_sec", 4))
+
+    if a.set_enabled is not None:
+        from .dashboard import write_index
+
+        ids = [x.strip() for x in a.set_enabled.split(",") if x.strip()]
+        n, total = stores_sync.set_enabled(a.stores, ids)
+        write_index(a.docs, a.stores)
+        log.info("調査対象を保存: %d / %d 店", n, total)
+        return 0
 
     if a.sync_stores:
         own = settings.get("own_job_site") or {}
@@ -85,6 +96,11 @@ def main(argv=None) -> int:
                 shard = dt.datetime.now(JST).weekday() if a.shard == "today" else int(a.shard)
                 targets = [s for s in targets if int(s.get("shard", 0)) % 7 == shard]
             log.info("対象店舗(%s): %s", a.shard, ", ".join(s["id"] for s in targets) or "なし")
+    if a.only:
+        only = {x.strip() for x in a.only.split(",") if x.strip()}
+        targets = [s for s in (stores if not a.store else targets) if s["id"] in only and
+                   (a.shard in (None, "all") or a.store or int(s.get("shard", 0)) % 7 == (dt.datetime.now(JST).weekday() if a.shard == "today" else int(a.shard)))]
+        log.info("指定店舗に限定: %s", ", ".join(s["id"] for s in targets) or "なし")
     if not targets:
         log.warning("対象店舗がありません（--store / --shard / enabled を確認）")
         return 0

@@ -114,3 +114,21 @@ def sync(session, geocoder, stores_path: str, snar_url: str, company: str) -> li
         yaml.safe_dump(cfg, f, allow_unicode=True, sort_keys=False, width=200)
     log.info("店舗設定を更新: %s（曜日別 %s）", stores_path, load)
     return out
+
+
+def set_enabled(stores_path: str, ids: list[str]) -> tuple[int, int]:
+    """ダッシュボードで選んだ店舗だけを調査対象（enabled: true）にする。戻り値は (対象数, 全店数)"""
+    with open(stores_path, encoding="utf-8") as f:
+        text = f.read()
+    header = "".join(line + "\n" for line in text.splitlines() if line.startswith("#"))
+    cfg = yaml.safe_load(text) or {}
+    want = set(ids)
+    unknown = want - {s["id"] for s in cfg.get("stores") or []}
+    if unknown:
+        raise ValueError(f"存在しない店舗ID: {', '.join(sorted(unknown))}")
+    for st in cfg.get("stores") or []:
+        st["enabled"] = st["id"] in want
+    with open(stores_path, "w", encoding="utf-8") as f:
+        f.write(header)
+        yaml.safe_dump(cfg, f, allow_unicode=True, sort_keys=False, width=200)
+    return len(want), len(cfg.get("stores") or [])

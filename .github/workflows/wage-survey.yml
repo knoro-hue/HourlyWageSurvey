@@ -11,7 +11,7 @@ on:
       task:
         description: "実行内容"
         type: choice
-        options: [survey, sync-stores, build-areas, setup-all]
+        options: [survey, set-stores, sync-stores, build-areas, setup-all]
         default: survey
       shard:
         description: "survey の対象（all＝全店 / 0〜6＝店舗グループ番号）"
@@ -25,12 +25,17 @@ on:
         description: "1店舗あたり最大リクエスト数（空欄で設定値）"
         required: false
         default: ""
+      only:
+        description: "survey：この店舗ID（カンマ区切り）だけ調査 ／ set-stores：調査対象として保存する店舗ID"
+        required: false
+        default: ""
 
 permissions:
   contents: write
 
 concurrency:
-  group: wage-survey
+  # 調査対象の保存は、調査の実行中でも待たずに反映する
+  group: wage-survey-${{ github.event.inputs.task == 'set-stores' && 'config' || 'run' }}
   cancel-in-progress: false
 
 jobs:
@@ -40,6 +45,7 @@ jobs:
       task: ${{ steps.p.outputs.task }}
       shards: ${{ steps.p.outputs.shards }}
     steps:
+      - uses: actions/checkout@v4
       - id: p
         env:
           EVENT: ${{ github.event_name }}
@@ -47,6 +53,7 @@ jobs:
           TASK: ${{ github.event.inputs.task }}
           SHARD: ${{ github.event.inputs.shard }}
           STORE: ${{ github.event.inputs.store }}
+          ONLY: ${{ github.event.inputs.only }}
         run: |
           task="${TASK:-survey}"
           if [ "$EVENT" = "schedule" ]; then
@@ -57,6 +64,16 @@ jobs:
           if [ -n "$STORE" ]; then shards='["store"]'
           elif [ "$SHARD" = "all" ] || [ "$task" = "setup-all" ]; then shards='["0","1","2","3","4","5","6"]'
           elif [ -n "$SHARD" ]; then shards="[\"$SHARD\"]"; fi
+          if [ "$task" = "survey" ] && [ "$shards" = '["0","1","2","3","4","5","6"]' ]; then
+            # 調査対象（または指定店舗）がいるグループだけ実行する
+            shards=$(python3 -c "
+          import json, os, yaml
+          st = yaml.safe_load(open('config/stores.yaml', encoding='utf-8'))['stores']
+          only = {x.strip() for x in os.environ.get('ONLY', '').split(',') if x.strip()}
+          sel = [s for s in st if (s['id'] in only) if only] or ([] if only else [s for s in st if s.get('enabled', True)])
+          print(json.dumps(sorted({str(int(s.get('shard', 0)) % 7) for s in sel})))")
+            [ "$shards" = "[]" ] && { echo "調査対象の店舗がありません"; task=none; shards='["none"]'; }
+          fi
           echo "task=$task" >> "$GITHUB_OUTPUT"
           echo "shards=$shards" >> "$GITHUB_OUTPUT"
           echo "task=$task shards=$shards"
@@ -86,6 +103,28 @@ jobs:
           git commit -m "店舗一覧・エリアマスタ更新 $(TZ=Asia/Tokyo date +%F)"
           for i in 1 2 3; do git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break; sleep 10; done
 
+  config:
+    needs: plan
+    if: needs.plan.outputs.task == 'set-stores'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: 調査対象の店舗を保存
+        env:
+          ONLY: ${{ github.event.inputs.only }}
+        run: python -m wage_survey.main --set-enabled "$ONLY"
+      - name: コミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/stores.yaml docs
+          git diff --cached --quiet && exit 0
+          git commit -m "調査対象の店舗を更新（ダッシュボードから）"
+          for i in 1 2 3 4 5; do git pull --rebase --autostash -X theirs origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break; sleep 10; done
+
   survey:
     needs: [plan, setup]
     if: always() && needs.plan.result == 'success' && (needs.setup.result == 'success' || needs.setup.result == 'skipped') && (needs.plan.outputs.task == 'survey' || needs.plan.outputs.task == 'setup-all')
@@ -111,10 +150,12 @@ jobs:
           SHARD: ${{ matrix.shard }}
           STORE: ${{ github.event.inputs.store }}
           MAXREQ: ${{ github.event.inputs.max_requests }}
+          ONLY: ${{ github.event.inputs.only }}
         run: |
           args=()
           if [ "$SHARD" = "store" ]; then args+=(--store "$STORE"); else args+=(--shard "$SHARD"); fi
           if [ -n "$MAXREQ" ]; then args+=(--max-requests "$MAXREQ"); fi
+          if [ -n "$ONLY" ]; then args+=(--only "$ONLY"); fi
           python -m wage_survey.main "${args[@]}"
       - name: 結果をコミット
         run: |
@@ -124,6 +165,11 @@ jobs:
           git diff --cached --quiet && { echo "変更なし"; exit 0; }
           git commit -m "時給調査レポート $(TZ=Asia/Tokyo date +%F) shard=${{ matrix.shard }}"
           for i in 1 2 3 4 5; do
-            git pull --rebase --autostash -X theirs origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            if git pull --rebase --autostash -X theirs origin "${GITHUB_REF_NAME}"; then
+              # 実行中にダッシュボードで調査対象が変わっていても、最新の設定でメイン画面を作り直す
+              python -c "from wage_survey.dashboard import write_index; write_index('docs', 'config/stores.yaml')"
+              git add docs && git commit -q --amend --no-edit
+              git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            fi
             sleep 15
           done

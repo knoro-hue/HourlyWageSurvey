@@ -131,12 +131,12 @@ def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml")
     cfg_stores = []
     if os.path.exists(stores_path):
         with open(stores_path, encoding="utf-8") as f:
-            cfg_stores = [s for s in (yaml.safe_load(f) or {}).get("stores") or [] if s.get("enabled", True)]
+            cfg_stores = list((yaml.safe_load(f) or {}).get("stores") or [])
     entries = {}
     for s in cfg_stores:
         entries[s["id"]] = {
             "id": s["id"], "name": s["name"], "region": s.get("region", ""), "pref": s.get("prefecture_label", ""),
-            "address": s.get("address", ""),
+            "address": s.get("address", ""), "enabled": bool(s.get("enabled", True)),
             "shard": s.get("shard"), "run_date": None, "own": None, "direct": None, "indirect": None,
             "direct_n": 0, "indirect_n": 0, "postings": None, "jobs": 0,
         }

@@ -54,7 +54,8 @@
   .dl-links a.dl-main { background: var(--ind); border-color: var(--ind); color: #fff; font-weight: 500; }
   .dl-links a.dl-main span { font-weight: 400; font-size: 11px; opacity: .9; }
   .haken { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: 13px; cursor: pointer; }
-  .haken input { width: 16px; height: 16px; }
+  .haken { flex: 0 0 auto; white-space: nowrap; }
+  .controls .haken input { flex: none; width: 16px; height: 16px; padding: 0; }
   .indeed { border-color: #2557a7; }
   .indeed-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
   .indeed-btn { display: inline-grid; gap: 2px; padding: 16px 26px; border-radius: 12px; background: #2557a7; color: #fff; text-decoration: none; font-size: 18px; font-weight: 700; box-shadow: 0 3px 10px rgba(37,87,167,.25); }
@@ -66,6 +67,28 @@
   .more h3 { font-size: 14px; margin: 14px 0 4px; }
   .more ol, .more ul { margin: 0; padding-left: 1.4em; font-size: 13px; line-height: 1.8; }
   .more code { background: #eef2f6; padding: 0 4px; border-radius: 4px; }
+  .runbar { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #f6f9fc; }
+  .runbar-main { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .sel-count { font-weight: 700; font-size: 15px; }
+  .btn-save, .btn-run { font: inherit; font-weight: 700; padding: 10px 20px; border-radius: 8px; cursor: pointer; border: 1px solid var(--ind); }
+  .btn-save { background: #fff; color: var(--ind); }
+  .btn-save:disabled { opacity: .45; cursor: default; }
+  .btn-run { background: var(--ind); color: #fff; }
+  .btn-run:disabled { opacity: .5; cursor: default; }
+  .run-status { font-size: 13px; color: var(--muted); }
+  .run-status b { color: var(--fg); }
+  th.chk, td.chk { width: 34px; text-align: center; }
+  td.chk input, th.chk input { width: 18px; height: 18px; cursor: pointer; }
+  tr.off td:not(.chk) { opacity: .45; }
+  .offtag { margin-left: 6px; font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+  dialog { max-width: 560px; width: calc(100% - 32px); border: 1px solid var(--line); border-radius: 12px; padding: 20px; color: var(--fg); }
+  dialog h2 { font-size: 17px; margin: 0 0 8px; }
+  dialog ol { padding-left: 1.3em; font-size: 13px; line-height: 1.8; }
+  dialog p { font-size: 13px; }
+  dialog input { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; margin-top: 8px; box-sizing: border-box; }
+  .dlg-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  .dlg-btns button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+  .dlg-btns .btn-run { background: var(--ind); color: #fff; border-color: var(--ind); }
   @media (max-width: 760px) { .hide-narrow { display: none; } .gapbar { display: none; } }
 </style>
 </head>
@@ -128,6 +151,16 @@
   <section class="card">
     <h2>店舗一覧</h2>
     <p class="note">店舗名を押すと、その店舗のレポートを開きます。差額は「自店の募集時給 − 周辺相場」。赤はマイナス（相場より低い）。見出しを押すと並び替え。</p>
+    <div class="runbar">
+      <div class="runbar-main">
+        <span id="sel-count" class="sel-count">—</span>
+        <button type="button" class="btn-save" id="btn-save" disabled>選択を保存</button>
+        <button type="button" class="btn-run" id="btn-run">今から調査</button>
+        <span class="run-status" id="run-status"></span>
+      </div>
+      <p class="note">チェックした店舗だけを毎週日曜に自動調査します。「選択を保存」で反映、「今から調査」はチェック中の店舗をすぐ調査します（1店あたり約10分、順番に実行）。
+        <a href="#" id="token-open">GitHub の操作用キーの設定</a></p>
+    </div>
     <div class="controls">
       <input id="q" type="search" placeholder="店舗名・都道府県で絞り込み" aria-label="店舗名で絞り込み">
       <select id="region" aria-label="地域"><option value="">すべての地域</option></select>
@@ -136,6 +169,7 @@
     <div class="tablebox">
       <table>
         <thead><tr>
+          <th class="chk"><input type="checkbox" id="chk-all" aria-label="表示中の店舗をすべて選択"></th>
           <th><button type="button" data-sort="name">店舗</button></th>
           <th class="hide-narrow"><button type="button" data-sort="region">地域</button></th>
           <th class="num"><button type="button" data-sort="own">① 自店時給</button></th>
@@ -152,6 +186,29 @@
   </section>
 
   <p class="note">毎週日曜の未明から全店を自動調査し、日曜の昼頃までに更新されます。① は自社採用サイト、② ③ はマイナビバイトの掲載求人。集計方法は各店舗のレポート下部を参照。</p>
+  <dialog id="token-dlg">
+    <form method="dialog">
+      <h2>GitHub の操作用キー（最初の1回だけ）</h2>
+      <p>この画面は GitHub の上で動く「見るだけ」のページなので、保存や調査の開始には GitHub の操作用キー（トークン）が要ります。キーはこのブラウザの中にだけ保存され、ほかには送りません。</p>
+      <details open><summary>キーの作り方（2分）</summary>
+        <ol>
+          <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub のキー作成画面</a>を開く（knoro-hue でログイン）</li>
+          <li>Token name：<code>時給調査ダッシュボード</code>、Expiration：1年など</li>
+          <li>Repository access：<b>Only select repositories</b> → <code>HourlyWageSurvey</code> だけを選ぶ</li>
+          <li>Permissions → Repository permissions → <b>Actions</b> を <b>Read and write</b> にする（ほかは触らない）</li>
+          <li>「Generate token」→ 表示された <code>github_pat_…</code> をコピーして下に貼る</li>
+        </ol>
+        <p class="note">このキーでできるのは、このリポジトリの自動処理を動かすことだけです。他人に渡さないでください。パソコンを共用する場合は使い終わったら「削除」を押してください。</p>
+      </details>
+      <input id="token-in" type="password" placeholder="github_pat_…" autocomplete="off" style="width:100%">
+      <div class="dlg-btns">
+        <button value="clear" id="token-clear" type="button">削除</button>
+        <button value="cancel">閉じる</button>
+        <button value="ok" id="token-ok" class="btn-run" type="button">保存</button>
+      </div>
+      <p id="token-msg" class="note"></p>
+    </form>
+  </dialog>
 </main>
 <script>
 (async function () {
@@ -213,12 +270,19 @@
       if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
       return (numKeys.has(k) ? x - y : String(x).localeCompare(String(y), 'ja')) * sort.dir;
     });
+    shown = rows;
     const tb = $('rows'); tb.replaceChildren();
     for (const s of rows) {
-      const tr = document.createElement('tr'); tr.className = 'row';
+      const tr = document.createElement('tr'); tr.className = 'row' + (sel.has(s.id) ? '' : ' off');
+      const ctd = document.createElement('td'); ctd.className = 'chk';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = sel.has(s.id); cb.setAttribute('aria-label', `${s.name}を調査する`);
+      cb.addEventListener('click', (e) => e.stopPropagation());
+      cb.addEventListener('change', () => { if (cb.checked) sel.add(s.id); else sel.delete(s.id); tr.classList.toggle('off', !cb.checked); updateSel(); });
+      ctd.appendChild(cb); tr.appendChild(ctd);
       const td = document.createElement('td');
       if (s.run_date) { const a = document.createElement('a'); a.href = `${s.id}/`; a.textContent = s.name; td.appendChild(a); tr.addEventListener('click', (e) => { if (e.target.tagName !== 'A') location.href = `${s.id}/`; }); }
-      else { td.textContent = s.name; const p = document.createElement('span'); p.className = 'pending'; p.textContent = '　次回の日曜に調査予定'; td.appendChild(p); }
+      else { td.textContent = s.name; const p = document.createElement('span'); p.className = 'pending'; p.textContent = sel.has(s.id) ? '　次回の日曜に調査予定' : ''; td.appendChild(p); }
+      if (s.enabled === false) { const o = document.createElement('span'); o.className = 'offtag'; o.textContent = '調査対象外'; td.appendChild(o); }
       tr.appendChild(td);
       cell(tr, s.region || s.pref || '', 'hide-narrow');
       cell(tr, s.run_date ? (s.own != null ? yen(s.own) : '求人掲載なし') : '—', 'num');
@@ -244,7 +308,95 @@
     document.querySelectorAll('[data-sort]').forEach((o) => o.closest('th').setAttribute('aria-sort', o === b ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none'));
     draw();
   }));
-  draw();
+  // ---- 調査対象の選択・今から調査 ----
+  const REPO = 'knoro-hue/HourlyWageSurvey', WF = 'wage-survey.yml';
+  const saved = new Set(S.filter((s) => s.enabled !== false).map((s) => s.id));
+  const sel = new Set(saved);
+  let shown = S;
+  const getToken = () => { try { return localStorage.getItem('iwc_gh_token') || ''; } catch (e) { return ''; } };
+  function updateSel() {
+    const changed = sel.size !== saved.size || [...sel].some((x) => !saved.has(x));
+    $('sel-count').textContent = `調査対象 ${sel.size} / ${S.length}店`;
+    $('btn-save').disabled = !changed;
+    $('btn-save').textContent = changed ? '選択を保存（未保存）' : '選択を保存';
+    $('btn-run').disabled = !sel.size;
+    const all = shown.length && shown.every((s) => sel.has(s.id));
+    $('chk-all').checked = !!all; $('chk-all').indeterminate = !all && shown.some((s) => sel.has(s.id));
+  }
+  $('chk-all').addEventListener('change', () => { for (const s of shown) { if ($('chk-all').checked) sel.add(s.id); else sel.delete(s.id); } draw(); updateSel(); });
+
+  async function dispatch(inputs) {
+    const token = getToken();
+    if (!token) { openToken('先に GitHub の操作用キーを設定してください。'); return false; }
+    const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${WF}/dispatches`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+      body: JSON.stringify({ ref: 'main', inputs }),
+    }).catch((e) => ({ ok: false, status: 0, text: async () => String(e) }));
+    if (r.ok) return true;
+    const msg = r.status === 401 ? 'キーが無効か期限切れです。作り直してください。' : r.status === 403 || r.status === 404 ? 'キーの権限が足りません（HourlyWageSurvey の Actions を Read and write に）。' : `GitHub への送信に失敗しました（${r.status}）。`;
+    if (r.status === 401 || r.status === 403 || r.status === 404) openToken(msg); else alert(msg);
+    return false;
+  }
+  $('btn-save').addEventListener('click', async () => {
+    const ids = S.filter((s) => sel.has(s.id)).map((s) => s.id);
+    if (!ids.length && !confirm('調査対象が0店になります。毎週の自動調査が止まりますが、よろしいですか？')) return;
+    $('btn-save').disabled = true; $('btn-save').textContent = '保存中…';
+    if (await dispatch({ task: 'set-stores', only: ids.join(',') })) {
+      saved.clear(); ids.forEach((x) => saved.add(x));
+      $('run-status').textContent = '保存しました（1〜2分で設定に反映されます）';
+      setTimeout(pollRuns, 8000);
+    }
+    updateSel();
+  });
+  $('btn-run').addEventListener('click', async () => {
+    const ids = S.filter((s) => sel.has(s.id)).map((s) => s.id);
+    const mins = ids.length * 10;
+    if (!confirm(`チェック中の ${ids.length} 店を今から調査します。\n終わるまでの目安：約${mins >= 60 ? Math.round(mins / 6) / 10 + '時間' : mins + '分'}（1店ずつ順番に実行）。\n実行中の調査があれば、その後に始まります。`)) return;
+    $('btn-run').disabled = true;
+    if (await dispatch({ task: 'survey', shard: 'all', only: ids.join(',') })) {
+      $('run-status').textContent = '調査の開始を依頼しました…';
+      setTimeout(pollRuns, 8000);
+    }
+    $('btn-run').disabled = !sel.size;
+  });
+
+  // 実行状況（公開情報なのでキー不要）
+  async function pollRuns() {
+    try {
+      const token = getToken();
+      const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${WF}/runs?per_page=5`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!r.ok) return;
+      const runs = (await r.json()).workflow_runs || [];
+      const active = runs.filter((x) => x.status !== 'completed');
+      const fmt2 = (t) => new Date(t).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const el = $('run-status'); el.replaceChildren();
+      const a = document.createElement('a'); a.target = '_blank'; a.rel = 'noopener';
+      if (active.length) {
+        const b = document.createElement('b'); b.textContent = `調査中（${active.length}件）`; el.appendChild(b);
+        el.append(` ${fmt2(active[active.length - 1].created_at)} 開始 `); a.href = active[0].html_url; a.textContent = '進み具合を見る'; el.appendChild(a);
+        setTimeout(pollRuns, 60000);
+      } else if (runs[0]) {
+        el.append(`前回の実行：${fmt2(runs[0].created_at)}（${runs[0].conclusion === 'success' ? '完了' : runs[0].conclusion === 'cancelled' ? '中止' : '失敗'}） `);
+        a.href = runs[0].html_url; a.textContent = '詳細'; el.appendChild(a);
+      }
+    } catch (e) { /* 状況表示は無くても使える */ }
+  }
+
+  // キーの設定
+  const dlg = $('token-dlg');
+  function openToken(msg) { $('token-msg').textContent = msg || (getToken() ? '設定済みです。作り直したときだけ貼り直してください。' : ''); $('token-in').value = ''; dlg.showModal(); }
+  $('token-open').addEventListener('click', (e) => { e.preventDefault(); openToken(); });
+  $('token-ok').addEventListener('click', async () => {
+    const t = $('token-in').value.trim();
+    if (!/^(github_pat_|ghp_)/.test(t)) { $('token-msg').textContent = 'github_pat_ で始まるキーを貼ってください。'; return; }
+    const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${WF}`, { headers: { Authorization: `Bearer ${t}` } }).catch(() => null);
+    if (!r || !r.ok) { $('token-msg').textContent = 'このキーではリポジトリを確認できませんでした。手順3・4を見直してください。'; return; }
+    try { localStorage.setItem('iwc_gh_token', t); } catch (e) { $('token-msg').textContent = 'このブラウザでは保存できません。'; return; }
+    $('token-msg').textContent = '保存しました。'; setTimeout(() => dlg.close(), 600);
+  });
+  $('token-clear').addEventListener('click', () => { try { localStorage.removeItem('iwc_gh_token'); } catch (e) { /* なし */ } $('token-msg').textContent = '削除しました。'; });
+
+  draw(); updateSel(); pollRuns();
 })();
 </script>
 </body>
