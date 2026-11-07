@@ -76,7 +76,8 @@ def main(argv=None) -> int:
         return 0
 
     if a.store:
-        targets = [s for s in stores if s["id"] in a.store]
+        wanted = {x.strip() for v in a.store for x in v.split(",") if x.strip()}
+        targets = [s for s in stores if s["id"] in wanted]
     else:
         targets = [s for s in stores if s.get("enabled", True)]
         if a.shard is not None:
