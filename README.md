@@ -61,6 +61,10 @@
 Indeed・タウンワーク（Indeed統合）・バイトル等は利用規約やアクセス制限によって自動取得の対象外です。必要な求人は
 [`data/manual_jobs.csv`](data/manual_jobs.csv) に1行ずつ追記すると、次回の実行から距離計算・集計に含まれます。
 
+**Indeed 収集ボタン**：https://knoro-hue.github.io/HourlyWageSurvey/tools/indeed.html
+ボタンをブックマークバーに入れ、Indeed を開いて押すと、選んだ店舗の周辺をページ送りで集めて CSV にします（担当者が画面の前で操作する前提。1ページ6秒以上の間隔）。
+保存した CSV を [`data/manual`](data/manual) フォルダにアップロードすると次回の調査から取り込まれます（確認日から60日を過ぎた行は除外）。
+
 ```csv
 store_id,classification,site,company,shop,occupation,employment,wage_type,wage_min,wage_max,address,work_content,url,checked_date
 dospara-namba,own,Indeed,株式会社サードウェーブ,ドスパラ大阪・なんば店,販売スタッフ,アルバイト・パート,時給,1250,,大阪府大阪市浪速区日本橋3丁目6-22,PC・パーツの販売・接客,https://...,2026-11-06
