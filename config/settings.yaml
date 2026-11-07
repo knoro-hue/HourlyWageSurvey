@@ -25,6 +25,7 @@ competitor_research:
   max_items: 15         # 1店舗あたりの最大求人数
 geocode_cache: data/geocode_cache.json
 manual_jobs_csv: data/manual_jobs.csv   # Indeed・バイトル等の手入力求人
+manual_jobs_dir: data/manual            # Indeed 収集ボタンの CSV をここに置く
 
 mynavi:
   # 直接競合として広域検索する職種パス（家電量販店）

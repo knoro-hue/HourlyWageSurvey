@@ -110,3 +110,24 @@ def test_hourly_values_dedup_and_far_location():
     master = {"miyagi/city-43/town-11": {"lat": 38.27, "lng": 140.87, "label": "仙台市青葉区"}}
     _fix_far_location(r, {"miyagi/city-43/town-11"}, store, master, 10)
     assert r.distance_km is not None and r.distance_km < 3 and "検索エリア" in r.location_method
+
+
+def test_manual_rows_from_folder(tmp_path):
+    from wage_survey.collector import load_manual_rows
+
+    class G:
+        def geocode(self, q):
+            return (34.66, 135.50) if "浪速区" in q else None
+
+        def station(self, name, pref):
+            return None
+
+    d = tmp_path / "manual"
+    d.mkdir()
+    head = "store_id,classification,site,company,shop,occupation,employment,wage_type,wage_min,wage_max,address,work_content,url,checked_date\n"
+    (d / "indeed_a.csv").write_text("﻿" + head + "s1,direct,Indeed,株式会社ノジマ,,販売,アルバイト,時給,1300,1500,大阪市浪速区,,https://x/1,2099-01-01\n"
+                                    "s1,indirect,Indeed,A社,,軽作業,アルバイト,時給,1200,,遠いところ,,https://x/2,2000-01-01\n", encoding="utf-8")
+    (d / "indeed_b.csv").write_text(head + "s1,direct,Indeed,株式会社ノジマ,,販売,アルバイト,時給,1300,1500,大阪市浪速区,,https://x/1,2099-01-01\n", encoding="utf-8")
+    store = {"id": "s1", "lat": 34.66, "lng": 135.50, "prefecture_label": "大阪府"}
+    rows = load_manual_rows(store, {"manual_jobs_csv": str(tmp_path / "none.csv"), "manual_jobs_dir": str(d)}, G())
+    assert len(rows) == 1 and rows[0].classification == "③直接競合" and rows[0].distance_km == 0 and rows[0].hourly_min == 1300

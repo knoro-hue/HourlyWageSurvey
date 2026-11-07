@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import datetime as dt
 import logging
 import os
 from dataclasses import dataclass, field
@@ -187,39 +188,55 @@ def _f(x):
         return None
 
 
+def _manual_paths(settings: dict) -> list[str]:
+    paths = [settings.get("manual_jobs_csv", "data/manual_jobs.csv")]
+    d = settings.get("manual_jobs_dir", "data/manual")
+    if os.path.isdir(d):
+        paths += sorted(os.path.join(d, n) for n in os.listdir(d) if n.lower().endswith(".csv"))
+    return [p for p in paths if os.path.exists(p)]
+
+
 def load_manual_rows(store: dict, settings: dict, geocoder) -> list[JobRow]:
-    """Indeed・バイトル等、自動取得しない媒体の求人を手入力CSVから取り込む"""
-    path = settings.get("manual_jobs_csv", "data/manual_jobs.csv")
-    if not os.path.exists(path):
-        return []
+    """Indeed・バイトル等、自動取得しない媒体の求人を CSV から取り込む
+    （data/manual_jobs.csv と data/manual/*.csv。Indeed 収集ボタンの CSV はそのまま data/manual に置けばよい）"""
     cls_map = {"own": CLASS_OWN, "direct": CLASS_DIRECT, "indirect": CLASS_INDIRECT,
                "①": CLASS_OWN, "②": CLASS_INDIRECT, "③": CLASS_DIRECT}
-    out = []
-    with open(path, encoding="utf-8-sig") as f:
-        for i, r in enumerate(csv.DictReader(f)):
-            if (r.get("store_id") or "").strip() != store["id"]:
-                continue
-            c = (r.get("classification") or "").strip()
-            cls = next((v for k, v in cls_map.items() if c.startswith(k)), CLASS_INDIRECT)
-            addr = nfkc(r.get("address"))
-            pt = geocoder.geocode(addr) if addr else None
-            if cls == CLASS_OWN and not pt:
-                pt = (store["lat"], store["lng"])
-            dist = round(haversine_km(store["lat"], store["lng"], pt[0], pt[1]), 2) if pt else None
-            wt = (r.get("wage_type") or "時給").strip()
-            lo, hi = _f(r.get("wage_min")), _f(r.get("wage_max"))
-            out.append(JobRow(
-                store_id=store["id"], classification=cls, site=(r.get("site") or "手入力").strip(),
-                job_id=f"manual-{i + 1}", url=(r.get("url") or "").strip(), company=nfkc(r.get("company")),
-                shop=nfkc(r.get("shop")), occupation=nfkc(r.get("occupation")), category="(手入力)",
-                employment=nfkc(r.get("employment")) or "アルバイト・パート", wage_type=wt, wage_min=lo, wage_max=hi,
-                wage_text=f"{wt}{int(lo) if lo else ''}{'～' + str(int(hi)) if hi else ''}円",
-                hourly_min=lo if wt == "時給" else None, hourly_max=hi if wt == "時給" else None,
-                address=addr, station="", lat=pt[0] if pt else None, lng=pt[1] if pt else None,
-                location_method="手入力住所" if addr else "店舗所在地", distance_km=dist, shift="",
-                work_content=nfkc(r.get("work_content")), publication_start=(r.get("checked_date") or "").strip(),
-                publication_end="", matched_by="手入力",
-            ))
+    out, seen = [], set()
+    for fi, path in enumerate(_manual_paths(settings)):
+        with open(path, encoding="utf-8-sig") as f:
+            for i, r in enumerate(csv.DictReader(f)):
+                if (r.get("store_id") or "").strip() != store["id"]:
+                    continue
+                cd = (r.get("checked_date") or "").strip()
+                if cd and cd < (dt.date.today() - dt.timedelta(days=int(settings.get("manual_max_age_days", 60)))).isoformat():
+                    continue  # 古い確認日の求人は掲載終了の可能性が高いので除外
+                url = (r.get("url") or "").strip()
+                if url and url in seen:
+                    continue  # 同じ求人を複数回アップロードした場合は新しいファイルの分を使わず1件に
+                seen.add(url)
+                c = (r.get("classification") or "").strip()
+                cls = next((v for k, v in cls_map.items() if c.startswith(k)), CLASS_INDIRECT)
+                addr = nfkc(r.get("address"))
+                pt, how = _locate(addr, store, geocoder) if addr else (None, "")
+                if cls == CLASS_OWN and not pt:
+                    pt, how = (store["lat"], store["lng"]), "店舗所在地"
+                dist = round(haversine_km(store["lat"], store["lng"], pt[0], pt[1]), 2) if pt else None
+                wt = (r.get("wage_type") or "時給").strip()
+                lo, hi = _f(r.get("wage_min")), _f(r.get("wage_max"))
+                site = (r.get("site") or "手入力").strip()
+                out.append(JobRow(
+                    store_id=store["id"], classification=cls, site=site,
+                    job_id=f"manual-{fi + 1}-{i + 1}", url=url, company=nfkc(r.get("company")),
+                    shop=nfkc(r.get("shop")), occupation=nfkc(r.get("occupation")), category=f"({site})",
+                    employment=nfkc(r.get("employment")) or "アルバイト・パート", wage_type=wt, wage_min=lo, wage_max=hi,
+                    wage_text=f"{wt}{int(lo) if lo else ''}{'～' + str(int(hi)) if hi else ''}円",
+                    hourly_min=lo if wt == "時給" else None, hourly_max=hi if wt == "時給" else None,
+                    address=addr, station="", lat=pt[0] if pt else None, lng=pt[1] if pt else None,
+                    location_method=(how.replace("Web調査の", "") + "から推定") if how and how != "店舗所在地" else (how or "位置不明"),
+                    distance_km=dist, shift="",
+                    work_content=nfkc(r.get("work_content")), publication_start=(r.get("checked_date") or "").strip(),
+                    publication_end="", matched_by=f"{site}（CSV取込）",
+                ))
     return out
 
 

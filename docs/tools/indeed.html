@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indeed 収集ボタン</title>
+<style>
+  :root { --ink: #1f2933; --muted: #5f6b76; --line: #dde3ea; --accent: #2557a7; --bg: #f7f9fb; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.7 "Noto Sans JP", system-ui, sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 24px 16px 60px; }
+  a { color: var(--accent); }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin: 16px 0; }
+  h1 { font-size: 22px; margin: 8px 0; } h2 { font-size: 17px; margin: 0 0 8px; }
+  .btn { display: inline-block; background: var(--accent); color: #fff; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 700; cursor: grab; }
+  ol li { margin: 6px 0; } .note { color: var(--muted); font-size: 13px; }
+  code { background: #eef2f6; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="../">← 時給調査ダッシュボード</a></p>
+  <h1>Indeed 収集ボタン</h1>
+  <p>Indeed を開いた状態でこのボタンを押すと、選んだ店舗の周辺の求人をページ送りしながら集め、CSV にします。担当者が画面の前で操作する前提の道具です。</p>
+
+  <section class="card">
+    <h2>1. ボタンをブックマークバーに入れる（最初の1回だけ・パソコンの Chrome / Edge 推奨）</h2>
+    <p><a class="btn" id="bm" href="#">読み込み中…</a></p>
+    <p class="note">この青いボタンを、ブラウザのブックマークバーへドラッグしてください（ブックマークバーが見えないときは Ctrl+Shift+B / ⌘+Shift+B）。店舗一覧が変わったら入れ直してください。</p>
+  </section>
+
+  <section class="card">
+    <h2>2. Indeed で集める</h2>
+    <ol>
+      <li><a href="https://jp.indeed.com/" target="_blank" rel="noopener">jp.indeed.com</a> を開く（何か1回検索しておくと止まりにくい）</li>
+      <li>ブックマークバーの「時給調査：Indeed収集」を押す → 右上に操作パネルが出ます</li>
+      <li>店舗を選ぶ（複数可）・種類（③直接競合／②間接競合）を選んで「収集開始」</li>
+      <li>終わったら「CSVを保存」</li>
+    </ol>
+    <p class="note">1ページごとに6秒以上あけて取得します。ロボット確認の画面が出たら自動で止まるので、普通に検索して確認を済ませてから再開してください。画面を閉じても集めたデータはこのブラウザに残ります。</p>
+  </section>
+
+  <section class="card">
+    <h2>3. CSV を GitHub に入れる</h2>
+    <ol>
+      <li><a id="up" href="https://github.com/knoro-hue/HourlyWageSurvey/upload/main/data/manual" target="_blank" rel="noopener">アップロード画面（data/manual フォルダ）</a>を開く</li>
+      <li>保存した CSV をドラッグして「Commit changes」</li>
+    </ol>
+    <p>次回の調査（毎週日曜）から、一覧・距離・グラフ・ダウンロード用データに Indeed の求人が入ります。</p>
+  </section>
+
+  <section class="card">
+    <h2>注意</h2>
+    <p class="note">Indeed の利用規約は自動的なデータ収集を制限しています。社内で利用可否を判断のうえ、少量・低頻度でご利用ください。アカウントやネットワークが制限された場合は利用を止めてください。</p>
+  </section>
+</main>
+<script>
+(async () => {
+  const bm = document.getElementById('bm');
+  try {
+    const [stores, code] = await Promise.all([
+      fetch('../stores.json').then((r) => r.json()),
+      fetch('indeed_collector.js').then((r) => r.text()),
+    ]);
+    const list = stores.map((s) => ({ id: s.id, name: s.name, pref: s.pref || '', address: s.address || '' }));
+    const src = code.replace('__STORES__', JSON.stringify(list));
+    bm.href = 'javascript:' + encodeURIComponent(src);
+    bm.textContent = '時給調査：Indeed収集';
+    bm.addEventListener('click', (e) => { e.preventDefault(); alert('このボタンはブックマークバーへドラッグして使います。'); });
+  } catch (e) {
+    bm.textContent = '読み込みに失敗しました（ページを再読み込みしてください）';
+  }
+})();
+</script>
+</body>
+</html>

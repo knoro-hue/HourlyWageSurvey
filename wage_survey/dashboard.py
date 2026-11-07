@@ -130,6 +130,7 @@ def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml")
     for s in cfg_stores:
         entries[s["id"]] = {
             "id": s["id"], "name": s["name"], "region": s.get("region", ""), "pref": s.get("prefecture_label", ""),
+            "address": s.get("address", ""),
             "shard": s.get("shard"), "run_date": None, "own": None, "direct": None, "indirect": None,
             "direct_n": 0, "indirect_n": 0, "postings": None, "jobs": 0,
         }
@@ -153,6 +154,10 @@ def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml")
         json.dump(list(entries.values()), f, ensure_ascii=False)
     shutil.copyfile(os.path.join(TEMPLATE_DIR, "index.html"), os.path.join(docs_dir, "index.html"))
     write_legacy_redirects(docs_dir, [e["id"] for e in entries.values()])
+    tools = os.path.join(docs_dir, "tools")
+    os.makedirs(tools, exist_ok=True)
+    shutil.copyfile(os.path.join(TEMPLATE_DIR, "indeed.html"), os.path.join(tools, "indeed.html"))
+    shutil.copyfile(os.path.join(TEMPLATE_DIR, "indeed_collector.js"), os.path.join(tools, "indeed_collector.js"))
     write_export(docs_dir, list(entries.values()))
 
 
