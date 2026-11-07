@@ -144,12 +144,17 @@ def select_areas(store: dict, master: dict, radius_km: float, town_buffer_km: fl
     pref_label = SLUG_TO_PREF.get(slug, "")
     addr_wo_pref = addr[len(pref_label):] if pref_label else addr
     picked = []
+    own_town_parents = set()
+    cities_with_towns = []
     for p, a in master.items():
-        if a.get("has_towns"):
-            continue
         lab = clean_label(a.get("label", ""))
         own_area = bool(lab) and a["pref"] == slug and addr_wo_pref.startswith(lab)
+        if a.get("has_towns"):
+            cities_with_towns.append((p, a, own_area))
+            continue
         if own_area:
+            if a.get("kind") == "town":
+                own_town_parents.add(p.rsplit("/", 1)[0])
             picked.append((0.0, p))
             continue
         if a.get("lat") is None:
@@ -157,5 +162,18 @@ def select_areas(store: dict, master: dict, radius_km: float, town_buffer_km: fl
         d = haversine_km(store["lat"], store["lng"], a["lat"], a["lng"])
         buf = town_buffer_km if a.get("kind") == "town" else city_buffer_km
         if d <= radius_km + buf:
+            picked.append((d, p))
+    # 市の一部しか町エリアが無い場合（例: 長野市→善光寺周辺のみ）、店舗のある市・圏内の市は市全体も対象にする
+    picked_paths = {p for _, p in picked}
+    for p, a, own_area in cities_with_towns:
+        if p in own_town_parents:
+            continue
+        if own_area:
+            picked.append((0.0, p))
+            continue
+        if a.get("lat") is None:
+            continue
+        d = haversine_km(store["lat"], store["lng"], a["lat"], a["lng"])
+        if d <= radius_km + city_buffer_km and not any(q.startswith(p + "/") for q in picked_paths):
             picked.append((d, p))
     return [p for _, p in sorted(picked)]
