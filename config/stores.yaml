@@ -17,6 +17,7 @@ stores:
     match:
     - 札幌店
   shard: 6
+  enabled: true
 - id: dospara-morioka
   name: ドスパラ盛岡都南店
   region: 北海道・東北
@@ -33,6 +34,7 @@ stores:
     match:
     - 盛岡都南店
   shard: 6
+  enabled: true
 - id: dospara-sendai
   name: ドスパラ仙台店
   region: 北海道・東北
@@ -49,6 +51,7 @@ stores:
     match:
     - 仙台店
   shard: 3
+  enabled: true
 - id: dospara-koriyama
   name: ドスパラ郡山安積店
   region: 北海道・東北
@@ -65,6 +68,7 @@ stores:
     match:
     - 郡山安積店
   shard: 4
+  enabled: true
 - id: dospara-akihabara
   name: ドスパラ秋葉原本店
   region: 関東
@@ -81,6 +85,7 @@ stores:
     match:
     - 秋葉原本店
   shard: 0
+  enabled: true
 - id: dospara-hachioji
   name: ドスパラ八王子店
   region: 関東
@@ -97,6 +102,7 @@ stores:
     match:
     - 八王子店
   shard: 0
+  enabled: true
 - id: dospara-machida
   name: ドスパラ町田店
   region: 関東
@@ -113,6 +119,7 @@ stores:
     match:
     - 町田店
   shard: 0
+  enabled: true
 - id: dospara-omiya
   name: ドスパラ大宮店
   region: 関東
@@ -129,6 +136,7 @@ stores:
     match:
     - 大宮店
   shard: 5
+  enabled: true
 - id: dospara-chiba
   name: ドスパラ千葉店
   region: 関東
@@ -145,6 +153,7 @@ stores:
     match:
     - 千葉店
   shard: 6
+  enabled: true
 - id: dospara-kawasaki
   name: ドスパラ川崎店
   region: 関東
@@ -161,6 +170,7 @@ stores:
     match:
     - 川崎店
   shard: 1
+  enabled: true
 - id: dospara-yokohama
   name: ドスパラ横浜駅前店
   region: 関東
@@ -177,6 +187,7 @@ stores:
     match:
     - 横浜駅前店
   shard: 1
+  enabled: true
 - id: dospara-zama
   name: ドスパラ座間相武台店
   region: 関東
@@ -193,6 +204,7 @@ stores:
     match:
     - 座間相武台店
   shard: 1
+  enabled: true
 - id: dospara-maebashi
   name: ドスパラ前橋インターアカマル店
   region: 関東近辺
@@ -209,6 +221,7 @@ stores:
     match:
     - 前橋インターアカマル店
   shard: 0
+  enabled: true
 - id: dospara-utsunomiya
   name: ドスパラ宇都宮鶴田店
   region: 関東近辺
@@ -225,6 +238,7 @@ stores:
     match:
     - 宇都宮鶴田店
   shard: 1
+  enabled: true
 - id: dospara-mito
   name: ドスパラ水戸赤塚店
   region: 関東近辺
@@ -241,6 +255,7 @@ stores:
     match:
     - 水戸赤塚店
   shard: 2
+  enabled: true
 - id: dospara-niigata
   name: ドスパラ新潟店
   region: 中部
@@ -257,6 +272,7 @@ stores:
     match:
     - 新潟店
   shard: 3
+  enabled: true
 - id: dospara-toyama
   name: ドスパラ富山本郷店
   region: 中部
@@ -273,6 +289,7 @@ stores:
     match:
     - 富山本郷店
   shard: 4
+  enabled: true
 - id: dospara-hakusan
   name: ドスパラ白山フェアモール松任店
   region: 中部
@@ -289,6 +306,7 @@ stores:
     match:
     - 白山フェアモール松任店
   shard: 5
+  enabled: true
 - id: dospara-fukui
   name: ドスパラ福井日之出店
   region: 中部
@@ -305,6 +323,7 @@ stores:
     match:
     - 福井日之出店
   shard: 6
+  enabled: true
 - id: dospara-kofu
   name: ドスパラ甲府飯田店
   region: 中部
@@ -321,6 +340,7 @@ stores:
     match:
     - 甲府飯田店
   shard: 0
+  enabled: true
 - id: dospara-nagano
   name: ドスパラ長野稲里店
   region: 中部
@@ -337,6 +357,7 @@ stores:
     match:
     - 長野稲里店
   shard: 1
+  enabled: true
 - id: dospara-shizuoka
   name: ドスパラ静岡東瀬名店
   region: 中部
@@ -353,6 +374,7 @@ stores:
     match:
     - 静岡東瀬名店
   shard: 2
+  enabled: true
 - id: dospara-fuji
   name: ドスパラ富士青葉店
   region: 中部
@@ -369,6 +391,7 @@ stores:
     match:
     - 富士青葉店
   shard: 2
+  enabled: true
 - id: dospara-hamamatsu
   name: ドスパラ浜松店
   region: 中部
@@ -385,6 +408,7 @@ stores:
     match:
     - 浜松店
   shard: 2
+  enabled: true
 - id: dospara-nagoya-osu
   name: ドスパラ名古屋・大須店
   region: 中部
@@ -402,6 +426,7 @@ stores:
     - 名古屋・大須店
     - 大須店
   shard: 2
+  enabled: true
 - id: dospara-tsu
   name: ドスパラ津ラッツ店
   region: 中部
@@ -418,6 +443,7 @@ stores:
     match:
     - 津ラッツ店
   shard: 3
+  enabled: true
 - id: dospara-namba
   name: ドスパラ大阪・なんば店
   region: 関西
@@ -482,6 +508,7 @@ stores:
     match:
     - 堺七道店
   shard: 3
+  enabled: true
 - id: dospara-kyoto
   name: ドスパラ京都店
   region: 関西
@@ -498,6 +525,7 @@ stores:
     match:
     - 京都店
   shard: 4
+  enabled: true
 - id: dospara-kobe-sannomiya
   name: ドスパラ神戸・三宮店
   region: 関西
@@ -515,6 +543,7 @@ stores:
     - 神戸・三宮店
     - 三宮店
   shard: 4
+  enabled: true
 - id: dospara-himeji
   name: ドスパラ姫路MEGAドン・キホーテ広畑店
   region: 関西
@@ -532,6 +561,7 @@ stores:
     - 姫路MEGAドン・キホーテ広畑店
     - キホーテ広畑店
   shard: 4
+  enabled: true
 - id: dospara-hiroshima
   name: ドスパラ広島店
   region: 中国・四国
@@ -548,6 +578,7 @@ stores:
     match:
     - 広島店
   shard: 5
+  enabled: true
 - id: dospara-fukuyama
   name: ドスパラ福山ココローズ店
   region: 中国・四国
@@ -564,6 +595,7 @@ stores:
     match:
     - 福山ココローズ店
   shard: 5
+  enabled: true
 - id: dospara-tokushima
   name: ドスパラ徳島住吉店
   region: 中国・四国
@@ -580,6 +612,7 @@ stores:
     match:
     - 徳島住吉店
   shard: 5
+  enabled: true
 - id: dospara-matsuyama
   name: ドスパラ松山環状枝松店
   region: 中国・四国
@@ -596,6 +629,7 @@ stores:
     match:
     - 松山環状枝松店
   shard: 6
+  enabled: true
 - id: dospara-hakata
   name: ドスパラ博多店
   region: 九州・沖縄
@@ -612,6 +646,7 @@ stores:
     match:
     - 博多店
   shard: 0
+  enabled: true
 - id: dospara-saga
   name: ドスパラ佐賀南部バイパス店
   region: 九州・沖縄
@@ -628,6 +663,7 @@ stores:
     match:
     - 佐賀南部バイパス店
   shard: 1
+  enabled: true
 - id: dospara-oita
   name: ドスパラ大分光吉インター店
   region: 九州・沖縄
@@ -644,6 +680,7 @@ stores:
     match:
     - 大分光吉インター店
   shard: 2
+  enabled: true
 - id: dospara-kumamoto
   name: ドスパラ熊本浜線店
   region: 九州・沖縄
@@ -660,6 +697,7 @@ stores:
     match:
     - 熊本浜線店
   shard: 3
+  enabled: true
 - id: dospara-miyazaki
   name: ドスパラ宮崎恒久店
   region: 九州・沖縄
@@ -676,6 +714,7 @@ stores:
     match:
     - 宮崎恒久店
   shard: 4
+  enabled: true
 - id: dospara-kagoshima
   name: ドスパラ鹿児島アクロスプラザ与次郎店
   region: 九州・沖縄
@@ -692,6 +731,7 @@ stores:
     match:
     - 鹿児島アクロスプラザ与次郎店
   shard: 5
+  enabled: true
 - id: dospara-okinawa
   name: ドスパラ浦添城間店
   region: 九州・沖縄
@@ -708,3 +748,4 @@ stores:
     match:
     - 浦添城間店
   shard: 6
+  enabled: true
