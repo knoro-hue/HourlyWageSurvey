@@ -55,6 +55,17 @@
   .dl-links a.dl-main span { font-weight: 400; font-size: 11px; opacity: .9; }
   .haken { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: 13px; cursor: pointer; }
   .haken input { width: 16px; height: 16px; }
+  .indeed { border-color: #2557a7; }
+  .indeed-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .indeed-btn { display: inline-grid; gap: 2px; padding: 16px 26px; border-radius: 12px; background: #2557a7; color: #fff; text-decoration: none; font-size: 18px; font-weight: 700; box-shadow: 0 3px 10px rgba(37,87,167,.25); }
+  .indeed-btn span { font-size: 12px; font-weight: 400; opacity: .9; }
+  .indeed-btn:hover { background: #1d4689; }
+  .indeed-why { flex: 1 1 18rem; margin: 0; font-size: 14px; }
+  .more summary { cursor: pointer; font-size: 13px; color: var(--ind); display: inline-flex; align-items: center; gap: 6px; }
+  .more .i { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ind); font: italic 700 12px Georgia, serif; }
+  .more h3 { font-size: 14px; margin: 14px 0 4px; }
+  .more ol, .more ul { margin: 0; padding-left: 1.4em; font-size: 13px; line-height: 1.8; }
+  .more code { background: #eef2f6; padding: 0 4px; border-radius: 4px; }
   @media (max-width: 760px) { .hide-narrow { display: none; } .gapbar { display: none; } }
 </style>
 </head>
@@ -81,7 +92,37 @@
       <a href="data/benefits.csv" download>自店と直接競合の待遇比較（CSV）</a>
       <a href="data/README.md" target="_blank" rel="noopener">データの説明（AI向け）</a>
     </div>
-    <p class="note" style="margin-top:10px">Indeed の求人を追加したいとき：<a href="tools/indeed.html">Indeed 収集ボタン</a>（Indeed を開いてボタンを押すと周辺の求人を集めて CSV にします）</p>
+  </section>
+
+  <section class="card indeed">
+    <div class="indeed-row">
+      <a class="indeed-btn" href="tools/indeed.html">Indeed の求人を追加する<span>Indeed 収集ボタン</span></a>
+      <p class="indeed-why">Indeed は利用規約で自動収集が制限されているため、毎週の自動調査には入っていません。担当者が Indeed を開いてボタンを押すと、選んだ店舗の周辺を自動でページ送りして集め、次回の調査に取り込みます。</p>
+    </div>
+    <details class="more">
+      <summary><span class="i">i</span> 使い方と詳しい理由</summary>
+      <h3>使い方</h3>
+      <ol>
+        <li>「Indeed の求人を追加する」を開き、青いボタンをブラウザのブックマークバーへドラッグ（最初の1回だけ・パソコンの Chrome / Edge）</li>
+        <li><a href="https://jp.indeed.com/" target="_blank" rel="noopener">jp.indeed.com</a> を開いてブックマークを押す → 右上に操作パネル</li>
+        <li>店舗（複数可）と種類（③直接競合／②間接競合）を選んで「収集開始」→ 終わったら「CSVを保存」</li>
+        <li>CSV を GitHub の <code>data/manual</code> フォルダにアップロード → 次の日曜の調査から一覧・集計・ダウンロードデータに反映</li>
+      </ol>
+      <h3>自動調査に入れていない理由</h3>
+      <ul>
+        <li>Indeed の利用規約が、ロボット等による自動的なデータ収集を制限している</li>
+        <li>robots.txt で求人検索ページへのボットのアクセスが拒否されている</li>
+        <li>求人データを取り出す公式 API は新規利用を受け付けていない（要確認）</li>
+        <li>サーバーから無人で取りに行くとボット判定で遮断され、会社のネットワークが制限されるおそれがある</li>
+      </ul>
+      <h3>ボタン方式にしている理由と注意</h3>
+      <ul>
+        <li>担当者が自分のブラウザで、画面の前で操作する前提（ロボット確認が出たら自動で止まる）</li>
+        <li>1ページごとに6秒以上あけて取得し、ページ数にも上限を設けて負荷を抑える</li>
+        <li>規約上はグレーな使い方のため、社内で利用可否を判断のうえ、少量・低頻度で使う</li>
+        <li>確認日から60日を過ぎた求人は自動で集計から外す（掲載終了の可能性が高いため）</li>
+      </ul>
+    </details>
   </section>
 
   <section class="card">

@@ -11,7 +11,9 @@
   a { color: var(--accent); }
   .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin: 16px 0; }
   h1 { font-size: 22px; margin: 8px 0; } h2 { font-size: 17px; margin: 0 0 8px; }
-  .btn { display: inline-block; background: var(--accent); color: #fff; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 700; cursor: grab; }
+  .btn { display: inline-block; background: var(--accent); color: #fff; padding: 18px 30px; border-radius: 12px; text-decoration: none; font-size: 20px; font-weight: 700; cursor: grab; box-shadow: 0 3px 10px rgba(37,87,167,.25); }
+  details summary { cursor: pointer; color: var(--accent); }
+  .why { background: #eef4fb; border-radius: 10px; padding: 10px 14px; font-size: 14px; }
   ol li { margin: 6px 0; } .note { color: var(--muted); font-size: 13px; }
   code { background: #eef2f6; padding: 1px 5px; border-radius: 4px; }
 </style>
@@ -20,7 +22,16 @@
 <main>
   <p><a href="../">← 時給調査ダッシュボード</a></p>
   <h1>Indeed 収集ボタン</h1>
-  <p>Indeed を開いた状態でこのボタンを押すと、選んだ店舗の周辺の求人をページ送りしながら集め、CSV にします。担当者が画面の前で操作する前提の道具です。</p>
+  <p>Indeed を開いた状態でこのボタンを押すと、選んだ店舗の周辺の求人をページ送りしながら集め、CSV にします。</p>
+  <p class="why"><b>なぜボタン方式？</b> Indeed は利用規約で自動収集が制限されていて、毎週の自動調査では取得できません。担当者が画面の前で操作し、ゆっくり集める方式にしています。
+  <details><summary>詳しい理由</summary>
+  <ul>
+    <li>利用規約がロボット等による自動的なデータ収集を制限している</li>
+    <li>robots.txt で求人検索ページへのボットのアクセスが拒否されている</li>
+    <li>求人データの公式 API は新規利用を受け付けていない（要確認）</li>
+    <li>サーバーから無人で取りに行くと遮断され、会社のネットワークが制限されるおそれがある</li>
+    <li>このボタンは1ページごとに6秒以上あけ、ロボット確認が出たら止まる。規約上グレーなため、社内判断のうえ少量・低頻度で使う</li>
+  </ul></details></p>
 
   <section class="card">
     <h2>1. ボタンをブックマークバーに入れる（最初の1回だけ・パソコンの Chrome / Edge 推奨）</h2>
