@@ -89,6 +89,19 @@
   .dlg-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
   .dlg-btns button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
   .dlg-btns .btn-run { background: var(--ind); color: #fff; border-color: var(--ind); }
+  .about { gap: 0; }
+  .about h2 { margin-bottom: 6px; }
+  .about .hint { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .ab { border-top: 1px solid var(--line); }
+  .ab summary { list-style: none; display: flex; gap: 14px; align-items: baseline; padding: 11px 2px; cursor: pointer; }
+  .ab summary::-webkit-details-marker { display: none; }
+  .ab summary::after { content: '＋'; margin-left: auto; color: var(--ind); font-size: 14px; }
+  .ab[open] summary::after { content: '－'; }
+  .ab-k { flex: 0 0 7.5em; font-size: 12px; color: var(--muted); }
+  .ab-v { font-size: 14px; font-weight: 500; }
+  .ab-d { padding: 0 2px 12px calc(7.5em + 16px); font-size: 13px; color: #33404d; line-height: 1.75; }
+  .ab-d p { margin: 0 0 6px; }
+  @media (max-width: 760px) { .ab-k { flex-basis: 6.2em; white-space: nowrap; } .ab-d { padding-left: 2px; } }
   @media (max-width: 760px) { .hide-narrow { display: none; } .gapbar { display: none; } }
 </style>
 </head>
@@ -99,11 +112,40 @@
     <p class="lede" id="lede">読み込み中…</p>
   </div>
 
-  <section class="tiles">
-    <div class="tile"><span class="label">調査済みの店舗</span><span class="value" id="t-stores">—</span><span class="note" id="t-stores-note"></span></div>
-    <div class="tile"><span class="label">周辺相場（②中央値）より低い店舗</span><span class="value" id="t-below">—</span><span class="note">自店の募集時給が5km圏の中央値を下回る</span></div>
-    <div class="tile"><span class="label">自店時給の全店中央値</span><span class="value" id="t-own">—</span><span class="note">自社採用サイトに掲載のある店舗</span></div>
-    <div class="tile"><span class="label">周辺相場（②中央値）の全店中央値</span><span class="value" id="t-ind">—</span><span class="note">各店から5km圏の時給中央値</span></div>
+  <section class="card about">
+    <h2>調査の概要 <span class="hint">（タップで詳細）</span></h2>
+    <details class="ab">
+      <summary><span class="ab-k">調査日</span><span class="ab-v" id="ab-date">—</span></summary>
+      <div class="ab-d" id="ab-date-d"></div>
+    </details>
+    <details class="ab">
+      <summary><span class="ab-k">① 自店</span><span class="ab-v">ドスパラ採用サイトの掲載時給</span></summary>
+      <div class="ab-d">
+        <p><a href="https://tw-saiyou.snar.jp/index.aspx?id=2BvD_nYsgcM" target="_blank" rel="noopener">サードウェーブ採用サイト（tw-saiyou.snar.jp）</a>のアルバイト求人を読み、店舗名が一致する求人の時給（下限）を自店の募集時給にしています。</p>
+        <p>掲載が無い店舗は「求人掲載なし」と表示します。待遇（交通費・昇給など）は求人本文から拾っています。</p>
+      </div>
+    </details>
+    <details class="ab">
+      <summary><span class="ab-k">②周辺 ③競合</span><span class="ab-v">マイナビバイトをエリア×職種で検索</span></summary>
+      <div class="ab-d">
+        <p><b>範囲</b>：店舗から半径5kmにかかる市区町村を②間接競合（周辺のアルバイト全般）、半径10kmを③直接競合（家電量販・PC関連）として検索し、求人ごとに店舗からの直線距離で絞り込みます。</p>
+        <p><b>取り方</b>：サイトのルール（robots.txt）で2ページ目以降の取得が禁止されているため、エリア×職種（大分類→中分類）に細かく分けて各検索の1ページ目（最大30件）を取得。1回ごとに4秒以上あけています。</p>
+        <p><b>③の判定</b>：職種分類「家電量販店」、企業名（ヨドバシ・ビックカメラ・ノジマ・ヤマダ・パソコン工房など）、職種名（家電販売・PC販売など）で判定。家電量販店での警備・清掃などは除外。</p>
+        <p><b>集計</b>：時給の下限で計算（日給・月給は除外）。同じ企業・職種・時給の大量掲載は1件として数えます。派遣会社の求人は本社住所でなく勤務地の表記や検索エリアから位置を推定。「派遣の求人を含める」で派遣を除いた集計に切り替えられます。</p>
+      </div>
+    </details>
+    <details class="ab">
+      <summary><span class="ab-k">Indeed など</span><span class="ab-v">自動では取得せず、CSVで追加</span></summary>
+      <div class="ab-d">
+        <p>Indeed・バイトル・タウンワークは利用規約やアクセス制限のため自動調査の対象外です。下の「Indeed の求人を追加する」で集めた CSV や手入力の CSV を、次回の調査から取り込みます。</p>
+      </div>
+    </details>
+    <details class="ab">
+      <summary><span class="ab-k">距離</span><span class="ab-v">住所・最寄駅から座標を出して直線距離</span></summary>
+      <div class="ab-d">
+        <p>求人に載っている座標を優先し、無い場合は住所を国土地理院の住所検索で、駅しか分からない場合は駅の位置（HeartRails Express）で座標にして、店舗からの直線距離（km）を出しています。</p>
+      </div>
+    </details>
   </section>
 
   <section class="card dl">
@@ -233,17 +275,25 @@
   applyDispatch();
   const done = S.filter((s) => s.run_date);
   const med = (a) => { const v = a.filter((x) => x != null).sort((x, y) => x - y); if (!v.length) return null; const m = Math.floor(v.length / 2); return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
-  function drawTiles() {
-  const below = done.filter((s) => s.gap_ind != null && s.gap_ind < 0);
-  const withOwn = done.filter((s) => s.gap_ind != null);
-  $('t-stores').textContent = `${done.length} / ${S.length}店`;
-  $('t-stores-note').textContent = done.length < S.length ? `残り${S.length - done.length}店は調査中または次回の日曜に調査` : '全店調査済み';
-  $('t-below').textContent = withOwn.length ? `${below.length} / ${withOwn.length}店` : '—';
-  $('t-own').textContent = yen(med(done.map((s) => s.own)));
-  $('t-ind').textContent = yen(med(done.map((s) => s.indirect)));
+  const dates = done.map((s) => s.run_date).sort();
+  const latest = dates[dates.length - 1];
+  {
+    const md = (d) => { const [, m, dd] = d.split('-'); const w = '日月火水木金土'[new Date(d + 'T00:00:00+09:00').getDay()]; return `${+m}/${+dd}(${w})`; };
+    const now = new Date(Date.now() + 9 * 3600e3);  // 日本時間
+    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + ((7 - now.getUTCDay()) % 7 || (now.getUTCHours() * 60 + now.getUTCMinutes() < 137 ? 0 : 7))));
+    const nextStr = md(next.toISOString().slice(0, 10));
+    const enabled = S.filter((s) => s.enabled !== false).length;
+    $('ab-date').textContent = !dates.length ? 'まだ調査していません' :
+      (dates[0] === latest ? md(latest) : `${md(dates[0])}〜${md(latest)}`) + `　${done.length}店 ／ 次回 ${nextStr} 2:17〜`;
+    const d = $('ab-date-d');
+    const p1 = document.createElement('p');
+    p1.textContent = `毎週日曜の2:17（日本時間）から、チェックの入っている${enabled}店を1店ずつ順に自動調査します（1店あたり約10分）。月曜には全店の結果がそろいます。`;
+    const p2 = document.createElement('p');
+    p2.textContent = '各店の調査日は店舗一覧の右端に出ています。「今から調査」ボタンでいつでも調べ直せます。';
+    d.append(p1, p2);
+    const old = done.filter((s) => s.run_date < latest);
+    if (old.length) { const p3 = document.createElement('p'); p3.textContent = `${latest} より前のデータの店舗：${old.map((s) => s.name.replace('ドスパラ', '')).join('、')}`; d.appendChild(p3); }
   }
-  drawTiles();
-  const latest = done.map((s) => s.run_date).sort().pop();
   $('lede').textContent = `ドスパラ${S.length}店舗それぞれの周辺アルバイト時給を、自店の募集時給と比べています。最新の調査日は ${latest || '—'}。`;
 
   const regions = [...new Set(S.map((s) => s.region).filter(Boolean))];
@@ -301,7 +351,7 @@
   $('haken').addEventListener('change', () => {
     include = $('haken').checked;
     try { localStorage.setItem('iwc_include_dispatch', include ? '1' : '0'); } catch (e) { /* 保存できなくても切り替える */ }
-    applyDispatch(); drawTiles(); draw();
+    applyDispatch(); draw();
   });
   document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => {
     const k = b.dataset.sort; sort.dir = sort.key === k ? -sort.dir : 1; sort.key = k;
