@@ -8,9 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for u in "" index.html docs/ docs/index.html docs/stores.json docs/dospara-namba/ docs/assets/bg.svg docs/data/stores.csv; do
-            for base in https://knoro-hue.github.io/HourlyWageSurvey/ https://knoro-hue.github.io/hourlywagesurvey/; do
+          for u in "" stores.json dospara-namba/ dospara-sendai/ assets/bg.svg data/stores.csv docs/ docs/dospara-namba/; do
+            for base in https://knoro-hue.github.io/HourlyWageSurvey/; do
               echo "$(curl -s -o /dev/null -w '%{http_code}' "$base$u") $base$u"
             done
           done
-          curl -s https://knoro-hue.github.io/HourlyWageSurvey/ | head -12
+          curl -s https://knoro-hue.github.io/HourlyWageSurvey/docs/dospara-namba/ | head -3
