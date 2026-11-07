@@ -7,7 +7,7 @@
 
 ### **https://knoro-hue.github.io/HourlyWageSurvey/**
 
-なんば店に直接：https://knoro-hue.github.io/HourlyWageSurvey/docs/dospara-namba/
+なんば店に直接：https://knoro-hue.github.io/HourlyWageSurvey/dospara-namba/
 
 メイン画面に全店の一覧（自店時給・周辺相場・差額）が並び、店舗名を押すと各店のレポートが開きます。各店レポートでは、自店・直接競合・間接競合の時給、時給の分布、職種別の相場、全求人の検索、企業別の求人数、時給の推移が見られます。Excel・CSV もダッシュボード上部のボタンからダウンロードできます。
 

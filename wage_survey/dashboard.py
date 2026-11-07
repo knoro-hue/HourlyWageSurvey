@@ -99,6 +99,25 @@ def write_dashboard(res: StoreResult, run_date: str, history_path: str, docs_dir
     write_index(docs_dir)
 
 
+_REDIRECT = """<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="0; url={to}"><link rel="canonical" href="{to}"><title>移動しました</title></head>
+<body><p><a href="{to}">時給調査ダッシュボードはこちら</a></p></body></html>
+"""
+
+
+def write_legacy_redirects(docs_dir: str, ids: list[str]):
+    """公開元が docs フォルダの場合、旧URL（…/docs/…）からの転送ページを置く"""
+    base = os.path.join(docs_dir, "docs")
+    os.makedirs(base, exist_ok=True)
+    with open(os.path.join(base, "index.html"), "w", encoding="utf-8") as f:
+        f.write(_REDIRECT.format(to="../"))
+    for sid in ids:
+        d = os.path.join(base, sid)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "index.html"), "w", encoding="utf-8") as f:
+            f.write(_REDIRECT.format(to=f"../../{sid}/"))
+
+
 def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml"):
     """メイン画面（全店一覧）用の docs/stores.json と docs/index.html を作る"""
     import yaml
@@ -133,6 +152,7 @@ def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml")
     with open(os.path.join(docs_dir, "stores.json"), "w", encoding="utf-8") as f:
         json.dump(list(entries.values()), f, ensure_ascii=False)
     shutil.copyfile(os.path.join(TEMPLATE_DIR, "index.html"), os.path.join(docs_dir, "index.html"))
+    write_legacy_redirects(docs_dir, [e["id"] for e in entries.values()])
     write_export(docs_dir, list(entries.values()))
 
 
@@ -188,7 +208,7 @@ def write_export(docs_dir: str, entries: list[dict]):
 
     out_dir = os.path.join(docs_dir, "data")
     os.makedirs(out_dir, exist_ok=True)
-    base_url = "https://knoro-hue.github.io/HourlyWageSurvey/docs/"
+    base_url = "https://knoro-hue.github.io/HourlyWageSurvey/"
     stores_csv = io.StringIO()
     w = csv.writer(stores_csv)
     w.writerow(["store_id", "store_name", "region", "prefecture", "run_date", "own_hourly", "indirect_median", "direct_median",
