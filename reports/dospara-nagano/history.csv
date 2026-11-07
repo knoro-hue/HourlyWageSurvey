@@ -1,2 +1,2 @@
 date,store_id,own_hourly,direct_n,direct_median,direct_max,indirect_n,indirect_median,indirect_p75,area_total_postings
-2026-11-07,dospara-nagano,,0,,,1,1250.0,1250.0,15
+2026-11-07,dospara-nagano,,2,1550.0,1600.0,154,1200.0,1300.0,787
