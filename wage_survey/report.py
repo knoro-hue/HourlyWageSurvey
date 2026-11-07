@@ -30,6 +30,15 @@ def hourly_values(rows: list[JobRow]) -> list[float]:
     return out
 
 
+def is_dispatch(r) -> bool:
+    """派遣（紹介予定派遣を含む）の求人か。マイナビバイトの雇用形態「派遣社員」「紹介予定派遣」で判定"""
+    return "派遣" in (getattr(r, "employment", "") or "")
+
+
+def without_dispatch(rows):
+    return [r for r in rows if not is_dispatch(r)]
+
+
 def stats(vals: list[float]) -> dict:
     if not vals:
         return {"n": 0}
@@ -123,7 +132,7 @@ def benefit_rows(res) -> list[dict]:
             "class": r.classification, "company": r.company, "store": r.shop, "address_or_station": r.station or r.address,
             "distance_km": r.distance_km, "wage_text": r.wage_text, **{k: b.get(k, "記載なし") for k in
             ("transport", "raise", "promotion", "discount", "social_insurance", "training", "allowances", "features")},
-            "source_site": r.site, "source_url": r.url, "source_date": r.publication_start,
+            "source_site": r.site, "source_url": r.url, "source_date": r.publication_start, "dispatch": is_dispatch(r),
         })
     for p in (res.research or {}).get("postings") or []:
         if not p.get("out_of_range"):
@@ -135,8 +144,10 @@ BENEFIT_TAGS = [("transport", "交通費支給"), ("raise", "昇給あり"), ("p
                 ("social_insurance", "社会保険完備"), ("training", "研修制度あり")]
 
 
-def benefit_rates(rows) -> list[dict]:
+def benefit_rates(rows, exclude_dispatch: bool = False) -> list[dict]:
     """②③それぞれで、各待遇を明記している求人の割合"""
+    if exclude_dispatch:
+        rows = without_dispatch(rows)
     out = []
     for cls in (CLASS_DIRECT, CLASS_INDIRECT):
         rs = [r for r in rows if r.classification == cls and r.benefits]
@@ -169,8 +180,12 @@ def write_excel(res: StoreResult, path: str, run_date: str):
     for k in (CLASS_OWN, CLASS_DIRECT, CLASS_INDIRECT):
         s = stats(hourly_values(cls.get(k, [])))
         ws.append([k, s["n"]] + [round(s[x]) if s["n"] else None for x in ("min", "p25", "median", "mean", "p75", "max")])
+    for k in (CLASS_DIRECT, CLASS_INDIRECT):
+        s = stats(hourly_values(without_dispatch(cls.get(k, []))))
+        ws.append([f"{k}（派遣を除く）", s["n"]] + [round(s[x]) if s["n"] else None for x in ("min", "p25", "median", "mean", "p75", "max")])
     ws.append([])
-    ws.append(["※時給は求人の「下限額」で集計（日給・月給は勤務時間不明のため除外）。"])
+    ws.append(["※時給は求人の「下限額」で集計（日給・月給は勤務時間不明のため除外）。同じ企業・職種・時給の求人は1件として集計。"])
+    ws.append(["※「派遣を除く」は雇用形態が派遣社員・紹介予定派遣の求人を除いた集計。各シートの「雇用形態」列で絞り込めます。"])
     ws.append(["※マイナビバイトは robots.txt で2ページ目以降の取得が禁止されているため、各検索条件の先頭30件のみ取得。件数は ⑥ のエリア×職種別シートが正確な掲載数。"])
     ws.append([f"※位置不明で除外: {res.unlocated} 件 / リクエスト数: {res.requests}" + (" / 予算上限で一部未取得" if res.budget_exhausted else "")])
     ws.column_dimensions["A"].width = 24
@@ -248,6 +263,9 @@ def write_markdown(res: StoreResult, path: str, run_date: str, files: dict[str, 
             ["①自店", s_own["n"] or ("手入力" if own_wage else 0), _yen(own_wage), _yen(s_own.get("mean")), f"{_yen(s_own.get('min'))}〜{_yen(s_own.get('max'))}", "-"],
             ["③直接競合", s_dir["n"], _yen(s_dir.get("median")), _yen(s_dir.get("mean")), f"{_yen(s_dir.get('min'))}〜{_yen(s_dir.get('max'))}", gap(s_dir)],
             ["②間接競合", s_ind["n"], _yen(s_ind.get("median")), _yen(s_ind.get("mean")), f"{_yen(s_ind.get('min'))}〜{_yen(s_ind.get('max'))}", gap(s_ind)],
+            *[[f"{k}（派遣を除く）", x["n"], _yen(x.get("median")), _yen(x.get("mean")), f"{_yen(x.get('min'))}〜{_yen(x.get('max'))}", gap(x)]
+              for k, x in (("③直接競合", stats(hourly_values(without_dispatch(cls.get(CLASS_DIRECT, []))))),
+                           ("②間接競合", stats(hourly_values(without_dispatch(cls.get(CLASS_INDIRECT, []))))))],
         ],
     ))
     if not s_own["n"] and not own_wage:
@@ -300,6 +318,8 @@ def append_history(res: StoreResult, path: str, run_date: str):
         "indirect_n": s[CLASS_INDIRECT]["n"], "indirect_median": s[CLASS_INDIRECT].get("median"), "indirect_p75": s[CLASS_INDIRECT].get("p75"),
         "area_total_postings": sum(p.count or 0 for p in res.pages if p.purpose == "エリア全体"),
     }
+    nd = {k: stats(hourly_values(without_dispatch(cls.get(k, [])))) for k in (CLASS_DIRECT, CLASS_INDIRECT)}
+    row.update({"direct_median_nd": nd[CLASS_DIRECT].get("median"), "indirect_median_nd": nd[CLASS_INDIRECT].get("median")})
     exists = os.path.exists(path)
     keep = []
     if exists:  # 同日再実行は上書き

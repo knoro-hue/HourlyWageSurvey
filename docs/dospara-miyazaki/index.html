@@ -64,6 +64,10 @@
   .count { font-size: 12px; color: var(--muted); }
   details { font-size: 13px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; }
   details p { margin: 8px 0 0; }
+  .haken { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 13px; cursor: pointer; }
+  .haken input { width: 16px; height: 16px; accent-color: var(--ind); }
+  .haken .sub2 { color: var(--muted); font-size: 12px; }
+  .tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 4px; background: #eef1f4; color: var(--muted); font-size: 11px; }
   .err { padding: 24px; background: #fff; border: 1px solid var(--bad); border-radius: 10px; }
   @media (max-width: 700px) { .hide-narrow { display: none; } }
 </style>
@@ -75,6 +79,7 @@
     <h1 id="title">読み込み中…</h1>
     <p class="lede" id="lede"></p>
     <div class="links" id="links"></div>
+    <label class="haken"><input type="checkbox" id="haken" checked> 派遣の求人を含める <span class="sub2" id="haken-note"></span></label>
   </div>
 
   <section class="tiles">
@@ -169,7 +174,7 @@
 
   <details>
     <summary>集計方法と除外しているもの</summary>
-    <p>時給は各求人の下限額。日給・月給の求人は時給の集計に含めず、一覧には載せています。距離は求人の掲載座標から店舗までの直線距離です。派遣会社など本社住所が載っている求人は、勤務地の表記や最寄駅から位置を推定しています。</p>
+    <p>時給は各求人の下限額。日給・月給の求人は時給の集計に含めず、一覧には載せています。同じ企業・職種・時給の求人は1件として集計します。「派遣の求人を含める」を外すと、雇用形態が派遣社員・紹介予定派遣の求人を除いて集計・表示します（設定はブラウザに保存され、全店で共通）。距離は求人の掲載座標から店舗までの直線距離です。派遣会社など本社住所が載っている求人は、勤務地の表記や最寄駅から位置を推定しています。</p>
     <p>① 自店の時給は自社採用サイトの掲載値。② ③ はマイナビバイトの掲載求人で、サイトの規則により区×職種ごとに先頭30件まで取得しています。Indeed・バイトル・タウンワークは自動取得の対象外です（手入力CSVで追加できます）。</p>
     <p id="notes"></p>
   </details>
@@ -190,8 +195,14 @@
     return;
   }
   const col = Object.fromEntries(D.columns.map((c, i) => [c, i]));
-  const rows = D.rows.map((a) => Object.fromEntries(D.columns.map((c) => [c, a[col[c]]])));
-  const S = D.summary, st = D.store;
+  const allRows = D.rows.map((a) => Object.fromEntries(D.columns.map((c) => [c, a[col[c]]])));
+  const hasFlag = 'dispatch' in col;
+  let include = true;
+  try { include = localStorage.getItem('iwc_include_dispatch') !== '0'; } catch (e) { /* 既定は含める */ }
+  const qp = new URLSearchParams(location.search).get('haken');
+  if (qp === '0' || qp === '1') include = qp === '1';
+  let rows = allRows, S = D.summary;
+  const st = D.store;
   const repoUrl = D.repo ? `https://github.com/${D.repo}` : '';
   document.title = `${st.name} 時給調査`;
   $('title').textContent = `${st.name} 時給調査`;
@@ -199,10 +210,13 @@
   // 見出しの一文
   const lede = $('lede');
   const add = (t, b) => { if (b) { const e = document.createElement('b'); e.textContent = t; lede.appendChild(e); } else lede.appendChild(document.createTextNode(t)); };
-  add(`${D.run_date} 時点。`);
-  if (S.own.n) { add('自店の募集時給 '); add(yen(S.own.median), true); add(' に対し、'); }
-  add(`店舗から${st.indirect_radius_km}km圏の時給中央値は `); add(yen(S.indirect.median), true);
-  add(`、家電量販・PC関連（${st.direct_radius_km}km圏）は `); add(yen(S.direct.median), true); add(' です。');
+  function drawLede() {
+    lede.replaceChildren();
+    add(`${D.run_date} 時点${include ? '' : '（派遣を除く）'}。`);
+    if (S.own.n) { add('自店の募集時給 '); add(yen(S.own.median), true); add(' に対し、'); }
+    add(`店舗から${st.indirect_radius_km}km圏の時給中央値は `); add(yen(S.indirect.median), true);
+    add(`、家電量販・PC関連（${st.direct_radius_km}km圏）は `); add(yen(S.direct.median), true); add(' です。');
+  }
 
   const links = $('links');
   const link = (text, href) => { const a = document.createElement('a'); a.href = href; a.textContent = text; a.target = '_blank'; a.rel = 'noopener'; links.appendChild(a); };
@@ -214,6 +228,8 @@
 
   // タイル
   const gapText = (el, d) => { el.textContent = (d > 0 ? '+' : d < 0 ? '−' : '±') + yen(Math.abs(d)); el.className = d < 0 ? 'neg' : d > 0 ? 'pos' : ''; };
+  function drawTiles() {
+  $('t-own-note').replaceChildren();
   $('t-own').textContent = S.own.n ? yen(S.own.median) : '未登録';
   if (S.own.n) {
     const n = $('t-own-note');
@@ -226,6 +242,7 @@
   $('t-dir-note').textContent = S.direct.n ? `時給求人 ${S.direct.n}件、範囲 ${yen(S.direct.min)}〜${yen(S.direct.max)}` : '該当なし';
   $('t-ind').textContent = yen(S.indirect.median);
   $('t-ind-note').textContent = S.indirect.n ? `時給求人 ${d3.format(',')(S.indirect.n)}件、上位25%は ${yen(S.indirect.p75)} 以上` : '該当なし';
+  }
   const areaTotal = d3.sum(D.areas, (a) => a.count);
   $('t-area').textContent = d3.format(',')(areaTotal) + '件';
   $('t-area-note').textContent = `${D.areas.length}エリア、マイナビバイト`;
@@ -319,7 +336,7 @@
 
   function drawTrend() {
     const el = $('trend'); el.replaceChildren();
-    const hs = (D.history || []).map((h) => ({ date: new Date(h.date + 'T00:00:00'), own: +h.own_hourly || null, dir: +h.direct_median || null, ind: +h.indirect_median || null })).sort((a, b) => a.date - b.date);
+    const hs = (D.history || []).map((h) => ({ date: new Date(h.date + 'T00:00:00'), own: +h.own_hourly || null, dir: +((!include && h.direct_median_nd !== undefined) ? h.direct_median_nd : h.direct_median) || null, ind: +((!include && h.indirect_median_nd !== undefined) ? h.indirect_median_nd : h.indirect_median) || null })).sort((a, b) => a.date - b.date);
     if (!hs.length) { el.textContent = '履歴はまだありません'; return; }
     const W = Math.max(300, el.clientWidth), H = 200;
     const svg = d3.select(el).append('svg').attr('viewBox', `0 0 ${W} ${H}`);
@@ -354,12 +371,14 @@
   const pillClass = (c) => c.startsWith('①') ? 'c1' : c.startsWith('③') ? 'c3' : 'c2';
 
   // 待遇比較（Web調査）
-  if ((D.benefits || []).length) {
-    $('benefits-card').hidden = false;
-    if (D.research && D.research.researched_at) $('benefits-note').textContent += ` 調査日時：${D.research.researched_at.replace('T', ' ')}`;
+  if (D.research && D.research.researched_at) $('benefits-note').textContent += ` 調査日時：${D.research.researched_at.replace('T', ' ')}`;
+  function drawBenefits() {
+    $('benefits').replaceChildren();
+    const list = (D.benefits || []).filter((b) => include || !b.dispatch);
+    $('benefits-card').hidden = !list.length && !(D.benefit_rates || []).length;
     const f = (label, v) => (v && v !== '記載なし' ? `${label} ${v}` : '');
     const join = (...xs) => xs.filter((x) => x && x !== '記載なし').join('／') || '記載なし';
-    for (const b of D.benefits) {
+    for (const b of list) {
       const tr = document.createElement('tr');
       const td = document.createElement('td');
       const pl = document.createElement('span'); pl.className = 'pill ' + (b.class || '').replace(/^①.*/, 'c1').replace(/^③.*/, 'c3').replace(/^②.*/, 'c2'); pl.textContent = b.class || ''; td.appendChild(pl);
@@ -378,7 +397,9 @@
     }
   }
 
-  const rates = D.benefit_rates || [];
+  function drawRates() {
+  $('rates').replaceChildren();
+  const rates = (include ? D.benefit_rates : (D.benefit_rates_nd || D.benefit_rates)) || [];
   const items = [...new Set(rates.map((r) => r.item))];
   for (const it of items) {
     const tr = document.createElement('tr'); cell(tr, it);
@@ -388,12 +409,16 @@
     }
     $('rates').appendChild(tr);
   }
+  }
 
   const dirBody = $('direct');
+  function drawDirect() {
+  dirBody.replaceChildren();
   for (const r of rows.filter((r) => r.class === '③直接競合')) {
     const tr = document.createElement('tr');
     cell(tr, r.distance_km, 'num'); cell(tr, r.company); linkCell(tr, r.shop, r.url); cell(tr, r.occupation); cell(tr, r.wage_text); cell(tr, r.work_content, 'wide hide-narrow');
     dirBody.appendChild(tr);
+  }
   }
 
   const sortState = { key: 'distance_km', dir: 1 };
@@ -407,7 +432,9 @@
     for (const r of out.slice(0, 300)) {
       const tr = document.createElement('tr');
       const td = cell(tr, ''); const p = document.createElement('span'); p.className = 'pill ' + pillClass(r.class); p.textContent = r.class; td.appendChild(p);
-      cell(tr, r.distance_km, 'num'); linkCell(tr, r.shop, r.url); cell(tr, r.occupation); cell(tr, r.category, 'hide-narrow');
+      cell(tr, r.distance_km, 'num'); linkCell(tr, r.shop, r.url);
+      const oc = cell(tr, r.occupation); if (r.dispatch) { const t = document.createElement('span'); t.className = 'tag'; t.textContent = '派遣'; oc.appendChild(t); }
+      cell(tr, r.category, 'hide-narrow');
       cell(tr, r.hourly ? d3.format(',')(r.hourly) : '', 'num'); cell(tr, r.wage_text, 'hide-narrow'); cell(tr, r.work_content, 'wide hide-narrow'); cell(tr, r.site, 'hide-narrow');
       tb.appendChild(tr);
     }
@@ -421,6 +448,8 @@
     drawAll();
   }));
 
+  function drawCompany() {
+  $('company').replaceChildren();
   const comp = [...d3.group(rows, (r) => r.company, (r) => r.class)].flatMap(([company, m]) => [...m].map(([cls, rs]) => {
     const hv = rs.map((r) => Number(r.hourly)).filter(Boolean);
     return { company, cls, site: [...new Set(rs.map((r) => r.site))].join(' / '), n: rs.length, km: d3.min(rs, (r) => Number(r.distance_km)), lo: d3.min(hv), hi: d3.max(hv) };
@@ -432,9 +461,24 @@
     cell(tr, c.lo ? (c.lo === c.hi ? d3.format(',')(c.lo) : `${d3.format(',')(c.lo)}〜${d3.format(',')(c.hi)}`) : '', 'num');
     $('company').appendChild(tr);
   }
+  }
 
   const drawCharts = () => { drawHist(); drawCat(); drawArea(); drawTrend(); };
-  drawCharts(); drawAll();
+  function apply() {
+    rows = include ? allRows : allRows.filter((r) => !r.dispatch);
+    S = include ? D.summary : (D.summary_nd || D.summary);
+    $('haken').checked = include;
+    const nd = allRows.filter((r) => r.dispatch).length;
+    $('haken-note').textContent = hasFlag ? `（このページの派遣求人 ${d3.format(',')(nd)}件）` : '（次回の調査から切り替え可能）';
+    drawLede(); drawTiles(); drawBenefits(); drawRates(); drawDirect(); drawCompany(); drawCharts(); drawAll();
+  }
+  $('haken').disabled = !hasFlag;
+  $('haken').addEventListener('change', () => {
+    include = $('haken').checked;
+    try { localStorage.setItem('iwc_include_dispatch', include ? '1' : '0'); } catch (e) { /* 保存できなくても表示は切り替える */ }
+    apply();
+  });
+  apply();
   let t; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(drawCharts, 150); }).observe(document.querySelector('main'));
 })();
 </script>

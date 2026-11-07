@@ -53,6 +53,8 @@
   .dl-links a:hover, .dl-links a:focus-visible { border-color: var(--ind); outline: none; }
   .dl-links a.dl-main { background: var(--ind); border-color: var(--ind); color: #fff; font-weight: 500; }
   .dl-links a.dl-main span { font-weight: 400; font-size: 11px; opacity: .9; }
+  .haken { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: 13px; cursor: pointer; }
+  .haken input { width: 16px; height: 16px; }
   @media (max-width: 760px) { .hide-narrow { display: none; } .gapbar { display: none; } }
 </style>
 </head>
@@ -88,6 +90,7 @@
     <div class="controls">
       <input id="q" type="search" placeholder="店舗名・都道府県で絞り込み" aria-label="店舗名で絞り込み">
       <select id="region" aria-label="地域"><option value="">すべての地域</option></select>
+      <label class="haken"><input type="checkbox" id="haken" checked> 派遣の求人を含める</label>
     </div>
     <div class="tablebox">
       <table>
@@ -118,12 +121,21 @@
   let S;
   try { S = await (await fetch('stores.json', { cache: 'no-store' })).json(); }
   catch (e) { $('lede').textContent = '店舗データを読み込めませんでした。'; return; }
-  for (const s of S) {
-    s.gap_ind = s.own != null && s.indirect != null ? s.own - s.indirect : null;
-    s.gap_dir = s.own != null && s.direct != null ? s.own - s.direct : null;
+  let include = true;
+  try { include = localStorage.getItem('iwc_include_dispatch') !== '0'; } catch (e) { /* 既定は含める */ }
+  for (const s of S) { s.indirect_all = s.indirect; s.direct_all = s.direct; }
+  function applyDispatch() {
+    for (const s of S) {
+      s.indirect = include || s.indirect_nd === undefined ? s.indirect_all : s.indirect_nd;
+      s.direct = include || s.direct_nd === undefined ? s.direct_all : s.direct_nd;
+      s.gap_ind = s.own != null && s.indirect != null ? s.own - s.indirect : null;
+      s.gap_dir = s.own != null && s.direct != null ? s.own - s.direct : null;
+    }
   }
+  applyDispatch();
   const done = S.filter((s) => s.run_date);
   const med = (a) => { const v = a.filter((x) => x != null).sort((x, y) => x - y); if (!v.length) return null; const m = Math.floor(v.length / 2); return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
+  function drawTiles() {
   const below = done.filter((s) => s.gap_ind != null && s.gap_ind < 0);
   const withOwn = done.filter((s) => s.gap_ind != null);
   $('t-stores').textContent = `${done.length} / ${S.length}店`;
@@ -131,6 +143,8 @@
   $('t-below').textContent = withOwn.length ? `${below.length} / ${withOwn.length}店` : '—';
   $('t-own').textContent = yen(med(done.map((s) => s.own)));
   $('t-ind').textContent = yen(med(done.map((s) => s.indirect)));
+  }
+  drawTiles();
   const latest = done.map((s) => s.run_date).sort().pop();
   $('lede').textContent = `ドスパラ${S.length}店舗それぞれの周辺アルバイト時給を、自店の募集時給と比べています。最新の調査日は ${latest || '—'}。`;
 
@@ -178,6 +192,12 @@
   }
   $('q').addEventListener('input', draw);
   $('region').addEventListener('change', draw);
+  $('haken').checked = include;
+  $('haken').addEventListener('change', () => {
+    include = $('haken').checked;
+    try { localStorage.setItem('iwc_include_dispatch', include ? '1' : '0'); } catch (e) { /* 保存できなくても切り替える */ }
+    applyDispatch(); drawTiles(); draw();
+  });
   document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => {
     const k = b.dataset.sort; sort.dir = sort.key === k ? -sort.dir : 1; sort.key = k;
     document.querySelectorAll('[data-sort]').forEach((o) => o.closest('th').setAttribute('aria-sort', o === b ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none'));

@@ -20,16 +20,18 @@ ChatGPT・Claude・Gemini などのAIや Excel にそのまま読み込んで分
 store_id, store_name, region(地域), prefecture, run_date(調査日),
 own_hourly(①自店の募集時給・円), indirect_median(②周辺の時給中央値・円), direct_median(③直接競合の時給中央値・円),
 gap_vs_indirect(①−②・円。マイナスは相場より低い), gap_vs_direct(①−③・円),
-indirect_n / direct_n(時給求人の件数), area_postings(周辺エリアのマイナビバイト掲載件数), report_url(店舗レポート)
+indirect_n / direct_n(時給求人の件数), area_postings(周辺エリアのマイナビバイト掲載件数), report_url(店舗レポート),
+*_excl_dispatch(派遣社員・紹介予定派遣の求人を除いた中央値と件数)
 
 ## jobs.csv の列
 store_id, store_name, class(区分), distance_km(店舗からの直線距離・km), company(企業), shop(店舗・勤務地名),
 occupation(職種名), category(職種分類), wage_type(時給/日給/月給), wage_text(給与表記),
 hourly(時給の下限・円。時給以外は空), station(最寄駅), location_basis(距離の根拠),
-site(求人サイト), url(求人URL), work_content(仕事内容の抜粋・最大160字), benefits(求人に明記された待遇), posted_date(掲載開始日)
+site(求人サイト), url(求人URL), work_content(仕事内容の抜粋・最大160字), benefits(求人に明記された待遇), posted_date(掲載開始日),
+employment(雇用形態), dispatch(1=派遣・紹介予定派遣の求人)
 
 ## 注意
-- 時給は求人の「下限額」。日給・月給は時給に換算していない。
+- 時給は求人の「下限額」。日給・月給は時給に換算していない。中央値は同じ企業・職種・時給の求人を1件として計算。
 - ②③はマイナビバイトの掲載求人。サイトの規則により、エリア×職種ごとに先頭30件までの取得（件数そのものは area_postings が正確）。
 - Indeed・バイトル・タウンワークの求人は含まない。
 - 「記載なし」や空欄は、制度が無いことを意味しない（求人票に書かれていないだけ）。

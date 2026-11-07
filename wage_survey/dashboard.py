@@ -15,12 +15,12 @@ from collections import defaultdict
 
 from .collector import CLASS_OWN_OTHER, StoreResult
 from .records import CLASS_DIRECT, CLASS_INDIRECT, CLASS_OWN
-from .report import BENEFIT_COLUMNS, benefit_rates, benefit_rows, hourly_values, stats
+from .report import BENEFIT_COLUMNS, benefit_rates, benefit_rows, hourly_values, is_dispatch, stats, without_dispatch
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 COLUMNS = ["class", "distance_km", "company", "shop", "occupation", "category", "wage_type",
            "wage_text", "hourly", "station", "location_basis", "site", "url", "work_content", "benefits",
-           "posted_date"]
+           "posted_date", "employment", "dispatch"]
 BENEFIT_LABELS = {"transport": "交通費", "raise": "昇給", "promotion": "社員登用", "discount": "社員割引",
                   "social_insurance": "社会保険", "training": "研修", "allowances": "加算・手当", "features": "その他"}
 
@@ -40,19 +40,23 @@ def build_data(res: StoreResult, run_date: str, history_path: str) -> dict:
     by = defaultdict(list)
     for r in res.rows:
         by[r.classification].append(r)
-    summary = {}
+    summary, summary_nd = {}, {}
     for key, cls in (("own", CLASS_OWN), ("direct", CLASS_DIRECT), ("indirect", CLASS_INDIRECT)):
         s = stats(hourly_values(by.get(cls, [])))
         summary[key] = {k: (round(v, 1) if isinstance(v, float) else v) for k, v in s.items()}
+        s = stats(hourly_values(without_dispatch(by.get(cls, []))))
+        summary_nd[key] = {k: (round(v, 1) if isinstance(v, float) else v) for k, v in s.items()}
     if not summary["own"]["n"] and st.get("own_hourly_wage_manual"):
         v = float(st["own_hourly_wage_manual"])
         summary["own"] = {"n": 1, "min": v, "p25": v, "median": v, "mean": v, "p75": v, "max": v, "manual": True}
+        summary_nd["own"] = summary["own"]
     rows = []
     for r in sorted(res.rows, key=lambda r: (r.distance_km if r.distance_km is not None else 99)):
         rows.append([
             r.classification, r.distance_km, r.company, r.shop, r.occupation, _short_category(r.category),
             r.wage_type, r.wage_text, r.hourly_min, r.station, r.location_method, r.site, r.url,
             " ".join((r.work_content or "").split())[:160], _benefit_text(r.benefits), r.publication_start,
+            r.employment, 1 if is_dispatch(r) else 0,
         ])
     areas = [{"area": p.area.replace("大阪市", ""), "count": p.count} for p in res.pages if p.purpose == "エリア全体" and p.count is not None]
     history = []
@@ -63,11 +67,13 @@ def build_data(res: StoreResult, run_date: str, history_path: str) -> dict:
         "store": {k: st.get(k) for k in ("id", "name", "address", "lat", "lng", "indirect_radius_km", "direct_radius_km")},
         "run_date": run_date,
         "summary": summary,
+        "summary_nd": summary_nd,
         "columns": COLUMNS,
         "rows": rows,
         "areas": areas,
         "benefits": [{k: p.get(k) for k, _ in BENEFIT_COLUMNS} for p in benefit_rows(res)],
         "benefit_rates": benefit_rates(res.rows),
+        "benefit_rates_nd": benefit_rates(res.rows, exclude_dispatch=True),
         "research": {k: (res.research or {}).get(k) for k in ("researched_at", "model", "notes")} if res.research else None,
         "history": history,
         "notes": {
@@ -140,9 +146,16 @@ def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml")
             continue
         with open(p, encoding="utf-8") as f:
             d = json.load(f)
+        # 画面の改修を全店に反映（店舗ページの HTML は全店共通）
+        shutil.copyfile(os.path.join(TEMPLATE_DIR, "dashboard.html"), os.path.join(docs_dir, sid, "index.html"))
         s = d["summary"]
         e = entries.setdefault(sid, {"id": sid, "name": d["store"]["name"], "region": "", "pref": "", "shard": None})
+        snd = d.get("summary_nd") or s
         e.update({
+            "own_nd": snd["own"].get("median") if snd["own"].get("n") else None,
+            "direct_nd": snd["direct"].get("median") if snd["direct"].get("n") else None,
+            "indirect_nd": snd["indirect"].get("median") if snd["indirect"].get("n") else None,
+            "direct_n_nd": snd["direct"].get("n", 0), "indirect_n_nd": snd["indirect"].get("n", 0),
             "run_date": d["run_date"],
             "own": s["own"].get("median") if s["own"].get("n") else None,
             "direct": s["direct"].get("median") if s["direct"].get("n") else None,
@@ -183,16 +196,18 @@ ChatGPT・Claude・Gemini などのAIや Excel にそのまま読み込んで分
 store_id, store_name, region(地域), prefecture, run_date(調査日),
 own_hourly(①自店の募集時給・円), indirect_median(②周辺の時給中央値・円), direct_median(③直接競合の時給中央値・円),
 gap_vs_indirect(①−②・円。マイナスは相場より低い), gap_vs_direct(①−③・円),
-indirect_n / direct_n(時給求人の件数), area_postings(周辺エリアのマイナビバイト掲載件数), report_url(店舗レポート)
+indirect_n / direct_n(時給求人の件数), area_postings(周辺エリアのマイナビバイト掲載件数), report_url(店舗レポート),
+*_excl_dispatch(派遣社員・紹介予定派遣の求人を除いた中央値と件数)
 
 ## jobs.csv の列
 store_id, store_name, class(区分), distance_km(店舗からの直線距離・km), company(企業), shop(店舗・勤務地名),
 occupation(職種名), category(職種分類), wage_type(時給/日給/月給), wage_text(給与表記),
 hourly(時給の下限・円。時給以外は空), station(最寄駅), location_basis(距離の根拠),
-site(求人サイト), url(求人URL), work_content(仕事内容の抜粋・最大160字), benefits(求人に明記された待遇), posted_date(掲載開始日)
+site(求人サイト), url(求人URL), work_content(仕事内容の抜粋・最大160字), benefits(求人に明記された待遇), posted_date(掲載開始日),
+employment(雇用形態), dispatch(1=派遣・紹介予定派遣の求人)
 
 ## 注意
-- 時給は求人の「下限額」。日給・月給は時給に換算していない。
+- 時給は求人の「下限額」。日給・月給は時給に換算していない。中央値は同じ企業・職種・時給の求人を1件として計算。
 - ②③はマイナビバイトの掲載求人。サイトの規則により、エリア×職種ごとに先頭30件までの取得（件数そのものは area_postings が正確）。
 - Indeed・バイトル・タウンワークの求人は含まない。
 - 「記載なし」や空欄は、制度が無いことを意味しない（求人票に書かれていないだけ）。
@@ -217,16 +232,18 @@ def write_export(docs_dir: str, entries: list[dict]):
     stores_csv = io.StringIO()
     w = csv.writer(stores_csv)
     w.writerow(["store_id", "store_name", "region", "prefecture", "run_date", "own_hourly", "indirect_median", "direct_median",
-                "gap_vs_indirect", "gap_vs_direct", "indirect_n", "direct_n", "area_postings", "report_url"])
+                "gap_vs_indirect", "gap_vs_direct", "indirect_n", "direct_n", "area_postings", "report_url",
+                "indirect_median_excl_dispatch", "direct_median_excl_dispatch", "indirect_n_excl_dispatch", "direct_n_excl_dispatch"])
     for e in entries:
         gi = e["own"] - e["indirect"] if e.get("own") is not None and e.get("indirect") is not None else None
         gd = e["own"] - e["direct"] if e.get("own") is not None and e.get("direct") is not None else None
         w.writerow([e["id"], e["name"], e.get("region", ""), e.get("pref", ""), e.get("run_date") or "", e.get("own"),
                     e.get("indirect"), e.get("direct"), gi, gd, e.get("indirect_n", 0), e.get("direct_n", 0),
-                    e.get("postings"), base_url + e["id"] + "/" if e.get("run_date") else ""])
+                    e.get("postings"), base_url + e["id"] + "/" if e.get("run_date") else "",
+                    e.get("indirect_nd"), e.get("direct_nd"), e.get("indirect_n_nd", 0), e.get("direct_n_nd", 0)])
     jobs_csv, ben_csv = io.StringIO(), io.StringIO()
     jw, bw = csv.writer(jobs_csv), csv.writer(ben_csv)
-    jw.writerow(["store_id", "store_name"] + COLUMNS[:9] + ["station", "location_basis", "site", "url", "work_content", "benefits", "posted_date"])
+    jw.writerow(["store_id", "store_name"] + COLUMNS)
     bcols = [k for k, _ in BENEFIT_COLUMNS]
     bw.writerow(["store_id", "store_name"] + bcols)
     n_jobs = 0
