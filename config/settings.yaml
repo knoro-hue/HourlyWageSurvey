@@ -36,6 +36,8 @@ mynavi:
 # ③直接競合（家電量販・パソコン関連小売）の判定ルール
 direct_competitor:
   categories: [家電量販店]
+  # 家電量販店で働くが販売以外の職種（警備・清掃・物流など）は直接競合に含めない
+  exclude_categories: [警備, 清掃, ビル管理, 倉庫, 物流, 軽作業, ドライバー, 配送, 引越]
   brand_keywords:
     - ヨドバシ
     - ビックカメラ

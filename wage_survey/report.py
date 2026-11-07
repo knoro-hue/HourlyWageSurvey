@@ -17,7 +17,17 @@ CLASS_ORDER = {CLASS_OWN: 0, CLASS_OWN_OTHER: 1, CLASS_DIRECT: 2, CLASS_INDIRECT
 
 
 def hourly_values(rows: list[JobRow]) -> list[float]:
-    return [r.hourly_min for r in rows if r.hourly_min]
+    """集計用の時給。同じ企業・同じ職種名・同じ時給の求人（派遣会社の大量掲載など）は1件として数える"""
+    seen, out = set(), []
+    for r in rows:
+        if not r.hourly_min:
+            continue
+        key = (r.company, r.occupation, r.hourly_min)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(r.hourly_min)
+    return out
 
 
 def stats(vals: list[float]) -> dict:

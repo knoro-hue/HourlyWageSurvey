@@ -84,7 +84,9 @@ def collect_store(store: dict, settings: dict, session, geocoder, page_cache: di
                 continue
             cur = jobs.get(cd)
             if cur is None or spec > cur["spec"]:
-                jobs[cd] = {"job": j, "category": page.occupation_label, "spec": spec}
+                jobs[cd] = {"job": j, "category": page.occupation_label, "spec": spec,
+                            "areas": (cur or {}).get("areas", set())}
+            jobs[cd]["areas"].add(area)
         return page
 
     # 1) 間接競合エリア: エリア全体 → 職種大分類 → (30件超なら) 中分類
@@ -121,6 +123,7 @@ def collect_store(store: dict, settings: dict, session, geocoder, page_cache: di
     r_own = float(store.get("own_match_radius_km", 0.3))
     for cd, v in jobs.items():
         for row in build_rows(v["job"], v["category"], store, settings, geocoder, mynavi.SITE_NAME, mynavi.job_url(v["job"])):
+            _fix_far_location(row, v["areas"], store, area_master, r_ind if row.classification == CLASS_INDIRECT else r_dir)
             if row.distance_km is None:
                 res.unlocated += 1
                 continue
@@ -146,6 +149,29 @@ def collect_store(store: dict, settings: dict, session, geocoder, page_cache: di
             res.rows += research_rows(store, res.research, geocoder, r_dir)
     res.requests = session.count - start_requests
     return res
+
+
+def _fix_far_location(row: JobRow, src_areas: set, store: dict, area_master: dict | None, radius_km: float):
+    """掲載住所が遠方（派遣会社の本社など）で、店舗近くのエリア検索で見つかった求人は検索エリアの中心で位置を推定する。
+    マイナビバイトのエリア検索は勤務地で絞り込まれるため、検索エリアの方が実際の勤務地に近い"""
+    if not area_master or row.location_method == "勤務地表記から推定":
+        return
+    if row.distance_km is not None and row.distance_km <= radius_km:
+        return
+    best = None
+    for a in src_areas:
+        m = area_master.get(a) or {}
+        if m.get("lat") is None:
+            continue
+        d = round(haversine_km(store["lat"], store["lng"], m["lat"], m["lng"]), 2)
+        if best is None or d < best[0]:
+            best = (d, m)
+    if best is None or best[0] > radius_km:
+        return
+    d, m = best
+    row.lat, row.lng, row.distance_km = m["lat"], m["lng"], d
+    row.location_method = "検索エリア中心から推定（掲載住所が遠方）"
+    row.address = f"{row.address}（勤務地は{m.get('label', '')}）"
 
 
 MANUAL_COLUMNS = [

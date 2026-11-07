@@ -91,3 +91,22 @@ def test_area_label_and_selection():
     master = {"tokyo/city-32": {"pref": "tokyo", "label": "23区全体千代田区", "lat": None, "lng": None, "kind": "city"}}
     st = {"address": "東京都千代田区外神田3-11-2", "lat": 35.70, "lng": 139.77}
     assert select_areas(st, master, 5) == ["tokyo/city-32"]
+
+
+def test_hourly_values_dedup_and_far_location():
+    from wage_survey.collector import _fix_far_location
+    from wage_survey.records import JobRow
+    from wage_survey.report import hourly_values
+
+    def row(company, wage, dist=1.0):
+        return JobRow(store_id="s", classification="③直接競合", site="x", job_id="1", url="", company=company, shop="",
+                      occupation="家電販売", category="", employment="", wage_type="時給", wage_min=wage, wage_max=None,
+                      wage_text="", hourly_min=wage, hourly_max=None, address="東京都新宿区", station="", lat=None, lng=None,
+                      location_method="掲載座標", distance_km=dist, shift="", work_content="", publication_start="", publication_end="")
+    rows = [row("派遣A", 2050)] * 77 + [row("B", 1300), row("C", 1250)]
+    assert sorted(hourly_values(rows)) == [1250, 1300, 2050]
+    r = row("派遣A", 1500, dist=350.0)
+    store = {"lat": 38.26, "lng": 140.88}
+    master = {"miyagi/city-43/town-11": {"lat": 38.27, "lng": 140.87, "label": "仙台市青葉区"}}
+    _fix_far_location(r, {"miyagi/city-43/town-11"}, store, master, 10)
+    assert r.distance_km is not None and r.distance_km < 3 and "検索エリア" in r.location_method

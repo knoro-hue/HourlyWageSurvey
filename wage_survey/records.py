@@ -226,6 +226,9 @@ def classify(job: dict, shop: dict, store_cfg: dict, settings: dict, category: s
     w = _brand_match(job, shop, direct.get("brand_keywords") or [])
     if w:
         return CLASS_DIRECT, f"競合ブランド:{w}"
+    excl = direct.get("exclude_categories") or []
+    if any(c and c in category for c in excl):
+        return CLASS_INDIRECT, ""
     head = " ".join([job.get("recruitmentOccupationName") or "", job.get("recruitmentAppealPoint") or "", names])
     w = _contains_any(head, direct.get("title_keywords") or [])
     if w:
