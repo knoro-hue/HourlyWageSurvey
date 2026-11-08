@@ -45,6 +45,11 @@
   td a:hover { color: var(--ind); text-decoration: underline; }
   .neg { color: var(--bad); font-weight: 500; } .pos { color: var(--ok); font-weight: 500; }
   .pending { color: var(--muted); font-size: 12px; }
+  .src { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .src b { color: var(--fg); font-weight: 500; }
+  .src .zero { opacity: .6; }
+  .srcline { display: none; margin-top: 2px; }
+  @media (max-width: 760px) { .srcline { display: block; } }
   .gapbar { display: inline-block; width: 90px; height: 10px; position: relative; vertical-align: middle; margin-left: 8px; }
   .gapbar::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: .5; }
   .gapbar i { position: absolute; top: 0; height: 100%; border-radius: 2px; }
@@ -213,6 +218,7 @@
         <thead><tr>
           <th class="chk"><input type="checkbox" id="chk-all" aria-label="表示中の店舗をすべて選択"></th>
           <th><button type="button" data-sort="name">店舗</button></th>
+          <th class="hide-narrow"><button type="button" data-sort="src_total" title="②③として集計した求人の件数（サイト別）">調査した求人</button></th>
           <th class="hide-narrow"><button type="button" data-sort="region">地域</button></th>
           <th class="num"><button type="button" data-sort="own">① 自店時給</button></th>
           <th class="num"><button type="button" data-sort="indirect">② 周辺相場（5km）</button></th>
@@ -270,6 +276,8 @@
       s.direct = include || s.direct_nd === undefined ? s.direct_all : s.direct_nd;
       s.gap_ind = s.own != null && s.indirect != null ? s.own - s.indirect : null;
       s.gap_dir = s.own != null && s.direct != null ? s.own - s.direct : null;
+      s.src = include || !s.sites_nd ? s.sites : s.sites_nd;
+      s.src_total = s.src ? (s.src.mynavi || 0) + (s.src.indeed || 0) + (s.src.other || 0) : null;
     }
   }
   applyDispatch();
@@ -301,7 +309,20 @@
 
   const maxGap = Math.max(100, ...S.map((s) => Math.abs(s.gap_ind || 0)));
   const sort = { key: 'gap_ind', dir: 1 };
-  const numKeys = new Set(['own', 'indirect', 'direct', 'gap_ind', 'gap_dir', 'postings']);
+  const numKeys = new Set(['own', 'indirect', 'direct', 'gap_ind', 'gap_dir', 'postings', 'src_total']);
+  function srcNode(s, cls) {
+    const box = document.createElement('div'); box.className = 'src' + (cls ? ' ' + cls : '');
+    const c = s.src;
+    if (!s.run_date || !c) { box.textContent = '—'; return box; }
+    const part = (label, n) => {
+      const sp = document.createElement('span'); if (!n) sp.className = 'zero';
+      sp.append(label + ' '); const b = document.createElement('b'); b.textContent = fmt.format(n || 0); sp.append(b, '件');
+      return sp;
+    };
+    box.append(part('マイナビ', c.mynavi), ' / ', part('Indeed', c.indeed));
+    if (c.other) box.append(' / ', part('その他', c.other));
+    return box;
+  }
   function cell(tr, text, cls) { const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = text; tr.appendChild(td); return td; }
   function gapCell(tr, g, bar, extra) {
     const td = cell(tr, g == null ? '—' : (g > 0 ? '+' : g < 0 ? '−' : '±') + yen(Math.abs(g)), 'num ' + (extra || '') + (g < 0 ? ' neg' : g > 0 ? ' pos' : ''));
@@ -333,7 +354,9 @@
       if (s.run_date) { const a = document.createElement('a'); a.href = `${s.id}/`; a.textContent = s.name; td.appendChild(a); tr.addEventListener('click', (e) => { if (e.target.tagName !== 'A') location.href = `${s.id}/`; }); }
       else { td.textContent = s.name; const p = document.createElement('span'); p.className = 'pending'; p.textContent = sel.has(s.id) ? '　次回の日曜に調査予定' : ''; td.appendChild(p); }
       if (s.enabled === false) { const o = document.createElement('span'); o.className = 'offtag'; o.textContent = '調査対象外'; td.appendChild(o); }
+      if (s.run_date && s.src) td.appendChild(srcNode(s, 'srcline'));
       tr.appendChild(td);
+      cell(tr, '', 'hide-narrow').appendChild(srcNode(s));
       cell(tr, s.region || s.pref || '', 'hide-narrow');
       cell(tr, s.run_date ? (s.own != null ? yen(s.own) : '求人掲載なし') : '—', 'num');
       cell(tr, yen(s.indirect), 'num');

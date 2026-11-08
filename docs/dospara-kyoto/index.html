@@ -24,6 +24,9 @@
   h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(1.6rem, 3vw, 2.2rem); margin: 0; text-wrap: balance; }
   .lede { margin: 6px 0 0; color: var(--muted); max-width: 75ch; font-size: 15px; }
   .lede b { color: var(--fg); }
+  .srcs { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+  .srcs b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .srcs .zero { opacity: .6; }
   .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .links a { font-size: 12px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); text-decoration: none; }
   .links a:hover { border-color: var(--ind); }
@@ -78,6 +81,7 @@
     <div class="crumb"><a href="../">時給調査ダッシュボード</a> ／ 店舗</div>
     <h1 id="title">読み込み中…</h1>
     <p class="lede" id="lede"></p>
+    <p class="srcs" id="srcs"></p>
     <div class="links" id="links"></div>
     <label class="haken"><input type="checkbox" id="haken" checked> 派遣の求人を含める <span class="sub2" id="haken-note"></span></label>
   </div>
@@ -463,6 +467,19 @@
   }
   }
 
+  function drawSrcs() {
+    const c = { mynavi: 0, indeed: 0, other: 0 };
+    for (const r of rows) {
+      if (String(r.class || '').startsWith('①')) continue;
+      const t = String(r.site || '').toLowerCase();
+      c[t.includes('マイナビ') || t.includes('mynavi') ? 'mynavi' : t.includes('indeed') ? 'indeed' : 'other'] += 1;
+    }
+    const el = $('srcs'); el.replaceChildren('調査した求人：');
+    const part = (label, n) => { const sp = document.createElement('span'); if (!n) sp.className = 'zero'; const b = document.createElement('b'); b.textContent = d3.format(',')(n); sp.append(label + ' ', b, '件'); return sp; };
+    el.append(part('マイナビバイト', c.mynavi), ' / ', part('Indeed', c.indeed));
+    if (c.other) el.append(' / ', part('その他', c.other));
+    el.append(include ? '（派遣を含む）' : '（派遣を除く）');
+  }
   const drawCharts = () => { drawHist(); drawCat(); drawArea(); drawTrend(); };
   function apply() {
     rows = include ? allRows : allRows.filter((r) => !r.dispatch);
@@ -470,7 +487,7 @@
     $('haken').checked = include;
     const nd = allRows.filter((r) => r.dispatch).length;
     $('haken-note').textContent = hasFlag ? `（このページの派遣求人 ${d3.format(',')(nd)}件）` : '（次回の調査から切り替え可能）';
-    drawLede(); drawTiles(); drawBenefits(); drawRates(); drawDirect(); drawCompany(); drawCharts(); drawAll();
+    drawLede(); drawSrcs(); drawTiles(); drawBenefits(); drawRates(); drawDirect(); drawCompany(); drawCharts(); drawAll();
   }
   $('haken').disabled = !hasFlag;
   $('haken').addEventListener('change', () => {

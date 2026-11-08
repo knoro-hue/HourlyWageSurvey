@@ -124,6 +124,33 @@ def write_legacy_redirects(docs_dir: str, ids: list[str]):
             f.write(_REDIRECT.format(to=f"../../{sid}/"))
 
 
+def site_key(site: str) -> str:
+    """求人サイト名を mynavi / indeed / other にまとめる"""
+    t = (site or "").lower()
+    if "マイナビ" in t or "mynavi" in t:
+        return "mynavi"
+    if "indeed" in t:
+        return "indeed"
+    return "other"
+
+
+def site_counts(d: dict) -> tuple[dict, dict]:
+    """店舗の data.json から、②③として調べた求人のサイト別件数（全体・派遣除く）を数える"""
+    cols = d.get("columns") or COLUMNS
+    ix = {c: i for i, c in enumerate(cols)}
+    allc = {"mynavi": 0, "indeed": 0, "other": 0}
+    nd = dict(allc)
+    for r in d.get("rows", []):
+        get = (lambda k: r.get(k)) if isinstance(r, dict) else (lambda k: r[ix[k]] if k in ix and ix[k] < len(r) else None)
+        if str(get("class") or "").startswith("①"):
+            continue
+        k = site_key(str(get("site") or ""))
+        allc[k] += 1
+        if not get("dispatch"):
+            nd[k] += 1
+    return allc, nd
+
+
 def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml"):
     """メイン画面（全店一覧）用の docs/stores.json と docs/index.html を作る"""
     import yaml
@@ -151,6 +178,7 @@ def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml")
         s = d["summary"]
         e = entries.setdefault(sid, {"id": sid, "name": d["store"]["name"], "region": "", "pref": "", "shard": None})
         snd = d.get("summary_nd") or s
+        sites, sites_nd = site_counts(d)
         e.update({
             "own_nd": snd["own"].get("median") if snd["own"].get("n") else None,
             "direct_nd": snd["direct"].get("median") if snd["direct"].get("n") else None,
@@ -162,6 +190,7 @@ def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml")
             "indirect": s["indirect"].get("median") if s["indirect"].get("n") else None,
             "direct_n": s["direct"].get("n", 0), "indirect_n": s["indirect"].get("n", 0),
             "postings": sum(a.get("count") or 0 for a in d.get("areas", [])), "jobs": len(d.get("rows", [])),
+            "sites": sites, "sites_nd": sites_nd,
         })
     with open(os.path.join(docs_dir, "stores.json"), "w", encoding="utf-8") as f:
         json.dump(list(entries.values()), f, ensure_ascii=False)
