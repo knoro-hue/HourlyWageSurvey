@@ -1,0 +1,17 @@
+name: 一時確認（マイナビ表示件数）
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          UA="HourlyWageSurveyBot/1.0 (+https://github.com/knoro-hue/hourlywagesurvey)"
+          echo "=== robots.txt"; curl -s -A "$UA" https://baito.mynavi.jp/robots.txt | head -80
+          sleep 5
+          curl -s -A "$UA" https://baito.mynavi.jp/osaka/city-262/town-153/ -o p.html
+          echo "=== size $(wc -c < p.html)"
+          echo "=== 件表示 / 表示件数 周辺"; grep -o '.\{120\}件表示.\{120\}' p.html | head -5; grep -o '.\{120\}表示件数.\{120\}' p.html | head -5
+          echo "=== クエリ付きリンク"; grep -oE 'href="[^"]*\?[^"]*"' p.html | sed 's/&amp;/\&/g' | grep -oE '\?[^"]*' | tr '?&' '\n\n' | cut -d= -f1 | sort | uniq -c | sort -rn | head -30
+          echo "=== NUXT 内のページ関連キー"; grep -oE '(pageSize|perPage|limit|size|rows|displayCount|count|pageNo|page)[\"]?:[^,]{1,20}' p.html | sort | uniq -c | sort -rn | head -30
