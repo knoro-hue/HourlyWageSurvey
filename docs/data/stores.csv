@@ -2,7 +2,7 @@
 dospara-sapporo,ドスパラ札幌店,北海道・東北,北海道,2026-11-08,1150.0,1287.5,1220.0,-137.5,-70.0,990,8,4825,https://knoro-hue.github.io/HourlyWageSurvey/dospara-sapporo/,1200.0,1200.0,550,7
 dospara-morioka,ドスパラ盛岡都南店,北海道・東北,岩手県,2026-11-08,1200.0,1125.0,1150.0,75.0,50.0,80,1,460,https://knoro-hue.github.io/HourlyWageSurvey/dospara-morioka/,1100.0,1150.0,70,1
 dospara-sendai,ドスパラ仙台店,北海道・東北,宮城県,2026-11-08,,1250.0,1400.0,,,668,1,2706,https://knoro-hue.github.io/HourlyWageSurvey/dospara-sendai/,1130.0,1400.0,318,1
-dospara-koriyama,ドスパラ郡山安積店,北海道・東北,福島県,2026-11-07,,1144.0,1172.5,,,189,2,560,https://knoro-hue.github.io/HourlyWageSurvey/dospara-koriyama/,1100.0,1172.5,116,2
+dospara-koriyama,ドスパラ郡山安積店,北海道・東北,福島県,2026-11-08,,1150.0,1250.0,,,279,3,563,https://knoro-hue.github.io/HourlyWageSurvey/dospara-koriyama/,1105.0,1250.0,168,3
 dospara-akihabara,ドスパラ秋葉原本店,関東,東京都,2026-11-08,1400.0,1499.0,1600.0,-99.0,-200.0,1688,23,31583,https://knoro-hue.github.io/HourlyWageSurvey/dospara-akihabara/,1380.0,1600.0,1032,18
 dospara-hachioji,ドスパラ八王子店,関東,東京都,2026-11-08,,1400.0,1600.0,,,404,8,3117,https://knoro-hue.github.io/HourlyWageSurvey/dospara-hachioji/,1300.0,1600.0,252,6
 dospara-machida,ドスパラ町田店,関東,東京都,2026-11-08,,1400.0,1600.0,,,655,7,3216,https://knoro-hue.github.io/HourlyWageSurvey/dospara-machida/,1300.0,1525.0,386,6
@@ -15,7 +15,7 @@ dospara-maebashi,ドスパラ前橋インターアカマル店,関東近辺,群�
 dospara-utsunomiya,ドスパラ宇都宮鶴田店,関東近辺,栃木県,2026-11-08,1300.0,1250.0,1310.0,50.0,-10.0,347,4,1204,https://knoro-hue.github.io/HourlyWageSurvey/dospara-utsunomiya/,1200.0,1162.5,224,2
 dospara-mito,ドスパラ水戸赤塚店,関東近辺,茨城県,2026-11-08,1200.0,1200.0,1440.0,0.0,-240.0,75,4,636,https://knoro-hue.github.io/HourlyWageSurvey/dospara-mito/,1175.0,1480.0,58,3
 dospara-niigata,ドスパラ新潟店,中部,新潟県,2026-11-08,,1200.0,1400.0,,,342,5,803,https://knoro-hue.github.io/HourlyWageSurvey/dospara-niigata/,1140.0,1400.0,181,5
-dospara-toyama,ドスパラ富山本郷店,中部,富山県,2026-11-07,,1300.0,1225.0,,,300,2,905,https://knoro-hue.github.io/HourlyWageSurvey/dospara-toyama/,1200.0,1225.0,169,2
+dospara-toyama,ドスパラ富山本郷店,中部,富山県,2026-11-08,,1280.0,1225.0,,,305,2,906,https://knoro-hue.github.io/HourlyWageSurvey/dospara-toyama/,1200.0,1225.0,171,2
 dospara-hakusan,ドスパラ白山フェアモール松任店,中部,石川県,2026-11-08,,1300.0,,,,187,0,462,https://knoro-hue.github.io/HourlyWageSurvey/dospara-hakusan/,1200.0,,103,0
 dospara-fukui,ドスパラ福井日之出店,中部,福井県,2026-11-08,,1200.0,1310.0,,,210,4,442,https://knoro-hue.github.io/HourlyWageSurvey/dospara-fukui/,1180.0,1310.0,135,4
 dospara-kofu,ドスパラ甲府飯田店,中部,山梨県,2026-11-08,,1250.0,1600.0,,,328,4,698,https://knoro-hue.github.io/HourlyWageSurvey/dospara-kofu/,1200.0,1600.0,228,4
@@ -27,9 +27,9 @@ dospara-nagoya-osu,ドスパラ名古屋・大須店,中部,愛知県,2026-11-08
 dospara-tsu,ドスパラ津ラッツ店,中部,三重県,2026-11-08,1250.0,1260.0,1220.0,-10.0,30.0,254,1,644,https://knoro-hue.github.io/HourlyWageSurvey/dospara-tsu/,1200.0,1220.0,142,1
 dospara-namba,ドスパラ大阪・なんば店,関西,大阪府,2026-11-08,1250.0,1400.0,1540.0,-150.0,-290.0,1666,10,10769,https://knoro-hue.github.io/HourlyWageSurvey/dospara-namba/,1280.0,1580.0,785,5
 dospara-osaka-sakai,ドスパラ堺七道店,関西,大阪府,2026-11-08,,1400.0,1430.0,,,566,9,3988,https://knoro-hue.github.io/HourlyWageSurvey/dospara-osaka-sakai/,1260.0,1400.0,285,6
-dospara-kyoto,ドスパラ京都店,関西,京都府,2026-11-07,,1325.5,1257.5,,,916,6,4721,https://knoro-hue.github.io/HourlyWageSurvey/dospara-kyoto/,1208.0,1240.0,479,5
-dospara-kobe-sannomiya,ドスパラ神戸・三宮店,関西,兵庫県,2026-11-07,,1350.0,1280.0,,,584,3,3222,https://knoro-hue.github.io/HourlyWageSurvey/dospara-kobe-sannomiya/,1230.0,1235.0,266,2
-dospara-himeji,ドスパラ姫路MEGAドン・キホーテ広畑店,関西,兵庫県,2026-11-07,,1320.0,1230.0,,,337,3,1570,https://knoro-hue.github.io/HourlyWageSurvey/dospara-himeji/,1220.0,1230.0,181,3
+dospara-kyoto,ドスパラ京都店,関西,京都府,2026-11-08,,1350.0,1257.5,,,1115,6,4692,https://knoro-hue.github.io/HourlyWageSurvey/dospara-kyoto/,1220.0,1240.0,527,5
+dospara-kobe-sannomiya,ドスパラ神戸・三宮店,関西,兵庫県,2026-11-08,,1350.0,1280.0,,,775,5,3235,https://knoro-hue.github.io/HourlyWageSurvey/dospara-kobe-sannomiya/,1230.0,1255.0,321,4
+dospara-himeji,ドスパラ姫路MEGAドン・キホーテ広畑店,関西,兵庫県,2026-11-08,,1340.0,1230.0,,,338,3,1576,https://knoro-hue.github.io/HourlyWageSurvey/dospara-himeji/,1220.0,1230.0,180,3
 dospara-hiroshima,ドスパラ広島店,中国・四国,広島県,2026-11-08,1200.0,1300.0,1400.0,-100.0,-200.0,712,5,3010,https://knoro-hue.github.io/HourlyWageSurvey/dospara-hiroshima/,1200.0,1300.0,354,3
 dospara-fukuyama,ドスパラ福山ココローズ店,中国・四国,広島県,2026-11-08,1200.0,1250.0,1250.0,-50.0,-50.0,309,3,946,https://knoro-hue.github.io/HourlyWageSurvey/dospara-fukuyama/,1180.0,1250.0,168,3
 dospara-tokushima,ドスパラ徳島住吉店,中国・四国,徳島県,2026-11-08,1200.0,1183.0,1340.0,17.0,-140.0,169,2,328,https://knoro-hue.github.io/HourlyWageSurvey/dospara-tokushima/,1150.0,1340.0,105,2
@@ -38,6 +38,6 @@ dospara-hakata,ドスパラ博多店,九州・沖縄,福岡県,2026-11-08,1200.0
 dospara-saga,ドスパラ佐賀南部バイパス店,九州・沖縄,佐賀県,2026-11-08,,1200.0,1300.0,,,198,1,322,https://knoro-hue.github.io/HourlyWageSurvey/dospara-saga/,1135.0,1300.0,127,1
 dospara-oita,ドスパラ大分光吉インター店,九州・沖縄,大分県,2026-11-08,,1200.0,1308.0,,,285,2,671,https://knoro-hue.github.io/HourlyWageSurvey/dospara-oita/,1140.0,1308.0,171,2
 dospara-kumamoto,ドスパラ熊本浜線店,九州・沖縄,熊本県,2026-11-08,,1200.0,1200.0,,,473,5,1664,https://knoro-hue.github.io/HourlyWageSurvey/dospara-kumamoto/,1125.0,1200.0,254,4
-dospara-miyazaki,ドスパラ宮崎恒久店,九州・沖縄,宮崎県,2026-11-07,1100.0,1180.0,1400.0,-80.0,-300.0,244,3,834,https://knoro-hue.github.io/HourlyWageSurvey/dospara-miyazaki/,1100.0,1150.0,136,1
+dospara-miyazaki,ドスパラ宮崎恒久店,九州・沖縄,宮崎県,2026-11-08,1100.0,1160.0,1400.0,-60.0,-300.0,237,3,804,https://knoro-hue.github.io/HourlyWageSurvey/dospara-miyazaki/,1100.0,1150.0,134,1
 dospara-kagoshima,ドスパラ鹿児島アクロスプラザ与次郎店,九州・沖縄,鹿児島県,2026-11-08,,1200.0,,,,305,0,1585,https://knoro-hue.github.io/HourlyWageSurvey/dospara-kagoshima/,1120.0,,170,0
 dospara-okinawa,ドスパラ浦添城間店,九州・沖縄,沖縄県,2026-11-08,,1200.0,1250.0,,,207,3,541,https://knoro-hue.github.io/HourlyWageSurvey/dospara-okinawa/,1150.0,1250.0,109,2
