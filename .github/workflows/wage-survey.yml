@@ -158,6 +158,7 @@ jobs:
           if [ -n "$ONLY" ]; then args+=(--only "$ONLY"); fi
           python -m wage_survey.main "${args[@]}"
       - name: 結果をコミット
+        if: always()   # 途中でエラーになっても、調査が終わった店舗の結果は保存する
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -131,3 +131,26 @@ def test_manual_rows_from_folder(tmp_path):
     store = {"id": "s1", "lat": 34.66, "lng": 135.50, "prefecture_label": "大阪府"}
     rows = load_manual_rows(store, {"manual_jobs_csv": str(tmp_path / "none.csv"), "manual_jobs_dir": str(d)}, G())
     assert len(rows) == 1 and rows[0].classification == "③直接競合" and rows[0].distance_km == 0 and rows[0].hourly_min == 1300
+
+
+def test_main_has_no_shadowed_imports():
+    """関数内 import で write_index 等がローカル変数扱いになり、調査の最後で落ちる不具合の再発防止"""
+    from wage_survey import main as m
+
+    assert "write_index" not in m.main.__code__.co_varnames
+    assert "write_dashboard" not in m.main.__code__.co_varnames
+
+
+def test_main_end_to_end_without_network(tmp_path, monkeypatch):
+    """収集部分を差し替えて main を最後まで通す（レポート・ダッシュボード・メイン画面の出力まで）"""
+    import shutil
+
+    from wage_survey import main as m
+    from wage_survey.collector import StoreResult
+
+    monkeypatch.setattr(m, "collect_store", lambda st, *a, **k: StoreResult(store=st))
+    shutil.copytree("wage_survey/templates", tmp_path / "t", dirs_exist_ok=True)
+    rc = m.main(["--store", "dospara-namba", "--out", str(tmp_path / "reports"), "--docs", str(tmp_path / "docs"),
+                 "--areas", str(tmp_path / "none.json"), "--date", "2099-01-01"])
+    assert rc in (0, 1)
+    assert (tmp_path / "docs" / "stores.json").exists()

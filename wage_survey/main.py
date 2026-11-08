@@ -59,8 +59,6 @@ def main(argv=None) -> int:
     delay = float(settings.get("request_delay_sec", 4))
 
     if a.set_enabled is not None:
-        from .dashboard import write_index
-
         ids = [x.strip() for x in a.set_enabled.split(",") if x.strip()]
         n, total = stores_sync.set_enabled(a.stores, ids)
         write_index(a.docs, a.stores)
