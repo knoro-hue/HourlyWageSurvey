@@ -1,3 +1,4 @@
-date,store_id,own_hourly,direct_n,direct_median,direct_max,indirect_n,indirect_median,indirect_p75,area_total_postings
-2026-11-06,dospara-maebashi,,2,1307.5,1415.0,256,1180.0,1300.0,1595
-2026-11-07,dospara-maebashi,,2,1307.5,1415.0,256,1180.0,1300.0,1602
+date,store_id,own_hourly,direct_n,direct_median,direct_max,indirect_n,indirect_median,indirect_p75,area_total_postings,direct_median_nd,indirect_median_nd
+2026-11-06,dospara-maebashi,,2,1307.5,1415.0,256,1180.0,1300.0,1595,,
+2026-11-07,dospara-maebashi,,2,1307.5,1415.0,256,1180.0,1300.0,1602,,
+2026-11-08,dospara-maebashi,,2,1307.5,1415.0,320,1250.0,1361.25,1572,1307.5,1150.0

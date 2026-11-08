@@ -1,3 +1,4 @@
-date,store_id,own_hourly,direct_n,direct_median,direct_max,indirect_n,indirect_median,indirect_p75,area_total_postings
-2026-11-06,dospara-akihabara,1400.0,0,,,0,,,0
-2026-11-07,dospara-akihabara,1400.0,23,1600.0,2050.0,1704,1500.0,1700.0,31800
+date,store_id,own_hourly,direct_n,direct_median,direct_max,indirect_n,indirect_median,indirect_p75,area_total_postings,direct_median_nd,indirect_median_nd
+2026-11-06,dospara-akihabara,1400.0,0,,,0,,,0,,
+2026-11-07,dospara-akihabara,1400.0,23,1600.0,2050.0,1704,1500.0,1700.0,31800,,
+2026-11-08,dospara-akihabara,1400.0,23,1600.0,2050.0,1688,1499.0,1700.0,31583,1600.0,1380.0
