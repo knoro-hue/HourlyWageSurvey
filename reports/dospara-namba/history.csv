@@ -1,3 +1,4 @@
-date,store_id,own_hourly,direct_n,direct_median,direct_max,indirect_n,indirect_median,indirect_p75,area_total_postings
-2026-11-06,dospara-namba,1250.0,9,1500.0,1950.0,3564,1400.0,1500.0,10835
-2026-11-07,dospara-namba,1250.0,9,1500.0,1950.0,3591,1400.0,1500.0,10813
+date,store_id,own_hourly,direct_n,direct_median,direct_max,indirect_n,indirect_median,indirect_p75,area_total_postings,direct_median_nd,indirect_median_nd
+2026-11-06,dospara-namba,1250.0,9,1500.0,1950.0,3564,1400.0,1500.0,10835,,
+2026-11-07,dospara-namba,1250.0,9,1500.0,1950.0,3591,1400.0,1500.0,10813,,
+2026-11-08,dospara-namba,1250.0,10,1540.0,1950.0,1666,1400.0,1500.0,10769,1580.0,1280.0
