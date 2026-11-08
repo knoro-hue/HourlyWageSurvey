@@ -1,2 +1,3 @@
-date,store_id,own_hourly,direct_n,direct_median,direct_max,indirect_n,indirect_median,indirect_p75,area_total_postings
-2026-11-07,dospara-nagoya-osu,1350.0,4,1375.0,1400.0,2681,1400.0,1500.0,5999
+date,store_id,own_hourly,direct_n,direct_median,direct_max,indirect_n,indirect_median,indirect_p75,area_total_postings,direct_median_nd,indirect_median_nd
+2026-11-07,dospara-nagoya-osu,1350.0,4,1375.0,1400.0,2681,1400.0,1500.0,5999,,
+2026-11-08,dospara-nagoya-osu,1350.0,2,1302.5,1375.0,1352,1400.0,1500.0,5975,1302.5,1250.0
