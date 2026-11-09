@@ -67,6 +67,13 @@
   .indeed-btn span { font-size: 12px; font-weight: 400; opacity: .9; }
   .indeed-btn:hover { background: #1d4689; }
   .indeed-why { flex: 1 1 18rem; margin: 0; font-size: 14px; }
+  .imp { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; }
+  .imp-btn { display: inline-block; padding: 10px 18px; border-radius: 10px; border: 2px solid #2557a7; color: #2557a7; background: #fff; font-weight: 700; font-size: 15px; cursor: pointer; }
+  .imp-btn:hover { background: #eef4fb; }
+  .imp-btn[aria-disabled="true"] { opacity: .5; pointer-events: none; }
+  .imp-link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; font-size: 13px; cursor: pointer; }
+  #imp-status { flex: 1 1 100%; margin: 0; font-size: 13px; color: var(--muted); }
+  #imp-status b { color: var(--fg); }
   .more summary { cursor: pointer; font-size: 13px; color: var(--ind); display: inline-flex; align-items: center; gap: 6px; }
   .more .i { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ind); font: italic 700 12px Georgia, serif; }
   .more h3 { font-size: 14px; margin: 14px 0 4px; }
@@ -142,7 +149,7 @@
     <details class="ab">
       <summary><span class="ab-k">Indeed など</span><span class="ab-v">自動では取得せず、CSVで追加</span></summary>
       <div class="ab-d">
-        <p>Indeed・バイトル・タウンワークは利用規約やアクセス制限のため自動調査の対象外です。下の「Indeed の求人を追加する」で集めた CSV や手入力の CSV を、次回の調査から取り込みます。</p>
+        <p>Indeed・バイトル・タウンワークは利用規約やアクセス制限のため自動調査の対象外です。下の「Indeed の求人を追加する」で集めた CSV や手入力の CSV を「CSVを取り込んで反映」で取り込むと、数分で一覧・集計に入ります（以後の毎週の調査にも自動で入り、確認日から60日で外れます）。</p>
       </div>
     </details>
     <details class="ab">
@@ -167,7 +174,12 @@
   <section class="card indeed">
     <div class="indeed-row">
       <a class="indeed-btn" href="tools/indeed.html">Indeed の求人を追加する<span>Indeed 収集ボタン</span></a>
-      <p class="indeed-why">Indeed は利用規約で自動収集が制限されているため、毎週の自動調査には入っていません。担当者が Indeed を開いてボタンを押すと、選んだ店舗の周辺を自動でページ送りして集め、次回の調査に取り込みます。</p>
+      <p class="indeed-why">Indeed は利用規約で自動収集が制限されているため、毎週の自動調査には入っていません。担当者が Indeed を開いてボタンを押すと、選んだ店舗の周辺を自動でページ送りして集めます。保存した CSV は下の「CSVを取り込んで反映」で数分で一覧・集計に入ります。</p>
+    </div>
+    <div class="imp">
+      <label class="imp-btn" id="imp-label">CSVを取り込んで反映<input type="file" id="imp-file" accept=".csv,text/csv" multiple hidden></label>
+      <button type="button" class="imp-link" id="imp-only">GitHub にアップロード済みの CSV を反映する</button>
+      <p id="imp-status">マイナビバイトは取り直さず、最新の調査結果に CSV の求人を足して作り直します（数分）。</p>
     </div>
     <details class="more">
       <summary><span class="i">i</span> 使い方と詳しい理由</summary>
@@ -176,7 +188,7 @@
         <li>「Indeed の求人を追加する」を開き、青いボタンをブラウザのブックマークバーへドラッグ（最初の1回だけ・パソコンの Chrome / Edge）</li>
         <li><a href="https://jp.indeed.com/" target="_blank" rel="noopener">jp.indeed.com</a> を開いてブックマークを押す → 右上に操作パネル</li>
         <li>店舗（複数可）と種類（③直接競合／②間接競合）を選んで「収集開始」→ 終わったら「CSVを保存」</li>
-        <li>CSV を GitHub の <code>data/manual</code> フォルダにアップロード → 次の日曜の調査から一覧・集計・ダウンロードデータに反映</li>
+        <li>この画面の「CSVを取り込んで反映」で保存した CSV を選ぶ → 数分で一覧・集計・ダウンロードデータに反映（次回以降の日曜の調査にも自動で入ります）</li>
       </ol>
       <h3>自動調査に入れていない理由</h3>
       <ul>
@@ -243,10 +255,10 @@
           <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub のキー作成画面</a>を開く（knoro-hue でログイン）</li>
           <li>Token name：<code>時給調査ダッシュボード</code>、Expiration：1年など</li>
           <li>Repository access：<b>Only select repositories</b> → <code>HourlyWageSurvey</code> だけを選ぶ</li>
-          <li>Permissions → Repository permissions → <b>Actions</b> を <b>Read and write</b> にする（ほかは触らない）</li>
+          <li>Permissions → Repository permissions → <b>Actions</b> と <b>Contents</b> を <b>Read and write</b> にする（ほかは触らない。Contents は CSV の取り込みに使います）</li>
           <li>「Generate token」→ 表示された <code>github_pat_…</code> をコピーして下に貼る</li>
         </ol>
-        <p class="note">このキーでできるのは、このリポジトリの自動処理を動かすことだけです。他人に渡さないでください。パソコンを共用する場合は使い終わったら「削除」を押してください。</p>
+        <p class="note">このキーでできるのは、このリポジトリの自動処理を動かすことと、ファイルを追加することだけです。他人に渡さないでください。パソコンを共用する場合は使い終わったら「削除」を押してください。</p>
       </details>
       <input id="token-in" type="password" placeholder="github_pat_…" autocomplete="off" style="width:100%">
       <div class="dlg-btns">
@@ -445,7 +457,7 @@
       const el = $('run-status'); el.replaceChildren();
       const a = document.createElement('a'); a.target = '_blank'; a.rel = 'noopener';
       if (active.length) {
-        const b = document.createElement('b'); b.textContent = `調査中（${active.length}件）`; el.appendChild(b);
+        const b = document.createElement('b'); b.textContent = `実行中（${active.length}件）`; el.appendChild(b);
         el.append(` ${fmt2(active[active.length - 1].created_at)} 開始 `); a.href = active[0].html_url; a.textContent = '進み具合を見る'; el.appendChild(a);
         setTimeout(pollRuns, 60000);
       } else if (runs[0]) {
@@ -454,6 +466,80 @@
       }
     } catch (e) { /* 状況表示は無くても使える */ }
   }
+
+  // CSV の取り込み（data/manual に置いてから、マイナビを取り直さずに反映）
+  const impStatus = (html) => { $('imp-status').replaceChildren(...html); };
+  const b64 = (buf) => { let s = ''; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+  function parseCsvHead(text) {
+    // 先頭行と store_id 列だけ読む（値の中の改行・カンマにも対応する簡易パーサ）
+    const rows = []; let row = [], f = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(f); f = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+      else f += c;
+    }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    return rows.filter((r) => r.some((x) => x.trim()));
+  }
+  async function importFiles(files) {
+    const token = getToken();
+    if (!token) { openToken('CSV の取り込みには GitHub の操作用キーが要ります（Actions と Contents を Read and write）。'); return; }
+    const names = new Map(S.map((s) => [s.id, s.name.replace('ドスパラ', '')]));
+    const items = [];
+    for (const file of files) {
+      const buf = await file.arrayBuffer();
+      const text = new TextDecoder('utf-8').decode(buf).replace(/^\ufeff/, '');
+      const rows = parseCsvHead(text);
+      const head = (rows[0] || []).map((x) => x.trim());
+      const iS = head.indexOf('store_id');
+      if (iS < 0 || !head.includes('url')) { alert(`${file.name} は取り込み用の形式ではありません（store_id・url などの列がありません）。Indeed 収集ボタンで保存した CSV を選んでください。`); return; }
+      const per = {};
+      for (const r of rows.slice(1)) { const id = (r[iS] || '').trim(); if (id) per[id] = (per[id] || 0) + 1; }
+      const n = Object.values(per).reduce((a, b) => a + b, 0);
+      if (!n) { alert(`${file.name} に求人がありません。`); return; }
+      const unknown = Object.keys(per).filter((id) => !names.has(id));
+      items.push({ file, buf, per, n, unknown });
+    }
+    const per = {}; for (const it of items) for (const [k, v] of Object.entries(it.per)) per[k] = (per[k] || 0) + v;
+    const list = Object.entries(per).map(([k, v]) => `・${names.get(k) || k + '（不明な店舗）'} ${v}件`).join('\n');
+    if (!confirm(`${items.length}ファイル・${items.reduce((a, b) => a + b.n, 0)}件を取り込み、数分で一覧に反映します。\n\n${list}\n\n同じ求人（同じURL）を何度取り込んでも1件として数えます。`)) return;
+    $('imp-label').setAttribute('aria-disabled', 'true');
+    try {
+      const stamp = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-');
+      for (const [i, it] of items.entries()) {
+        impStatus([`アップロード中… (${i + 1}/${items.length}) ${it.file.name}`]);
+        const safe = it.file.name.replace(/\.csv$/i, '').replace(/[^\w.-]+/g, '_').slice(0, 40) || 'indeed';
+        const path = `data/manual/${stamp}_${i + 1}_${safe}.csv`;
+        const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`, {
+          method: 'PUT', headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+          body: JSON.stringify({ message: `CSV取込：${it.file.name}（ダッシュボードから）`, content: b64(it.buf), branch: 'main' }),
+        }).catch(() => null);
+        if (!r || !r.ok) {
+          const st = r ? r.status : 0;
+          if (st === 401 || st === 403 || st === 404) openToken('キーの権限が足りません。キーを作り直し、Actions と Contents の両方を Read and write にしてください。');
+          else alert(`アップロードに失敗しました（${st}）。`);
+          impStatus([`アップロードに失敗しました（${it.file.name}）。`]);
+          return;
+        }
+      }
+      if (await dispatch({ task: 'import-csv', only: Object.keys(per).filter((k) => names.has(k)).join(',') })) {
+        const b = document.createElement('b'); b.textContent = 'アップロードしました。';
+        impStatus([b, ' 反映処理を始めました。数分後にこのページを再読み込みすると、一覧の「Indeed ○件」に入ります。']);
+        setTimeout(pollRuns, 8000);
+      }
+    } finally { $('imp-label').removeAttribute('aria-disabled'); $('imp-file').value = ''; }
+  }
+  $('imp-file').addEventListener('change', (e) => { const f = [...e.target.files]; if (f.length) importFiles(f); });
+  $('imp-only').addEventListener('click', async () => {
+    if (!confirm('GitHub の data/manual フォルダにある CSV を、全店の最新の調査結果に反映します（数分）。')) return;
+    if (await dispatch({ task: 'import-csv', only: '' })) {
+      impStatus(['反映処理を始めました。数分後にこのページを再読み込みしてください。']);
+      setTimeout(pollRuns, 8000);
+    }
+  });
 
   // キーの設定
   const dlg = $('token-dlg');

@@ -33,6 +33,21 @@ def load_yaml(path: str) -> dict:
         return yaml.safe_load(f) or {}
 
 
+def _write_latest(out: str):
+    """最新版へのショートカット reports/<店舗>/latest.md を書く関数を返す"""
+    def w(sid: str, run_date: str, md: str, files: dict) -> str:
+        with open(md, encoding="utf-8") as f:
+            body = f.read()
+        rel = run_date + "/"
+        for v in files.values():
+            b = os.path.basename(v)
+            body = body.replace(f"]({b})", f"]({rel}{b})")
+        with open(os.path.join(out, sid, "latest.md"), "w", encoding="utf-8") as f:
+            f.write(body)
+        return body
+    return w
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="採用向け 時給調査")
     ap.add_argument("--stores", default="config/stores.yaml")
@@ -49,6 +64,8 @@ def main(argv=None) -> int:
     ap.add_argument("--areas", default="data/mynavi_areas.json")
     ap.add_argument("--set-enabled", default=None, help="調査対象にする店舗ID（カンマ区切り）を保存して終了")
     ap.add_argument("--only", default=None, help="この店舗ID（カンマ区切り）に限って調査（--shard と併用可）")
+    ap.add_argument("--merge-manual", action="store_true",
+                    help="data/manual の CSV（Indeed など）だけを最新の調査結果に反映して終了（マイナビバイトは再取得しない）")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if a.verbose else logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -73,6 +90,31 @@ def main(argv=None) -> int:
 
     defaults = settings.get("store_defaults") or {}
     stores = [{**defaults, **s} for s in (load_yaml(a.stores).get("stores") or [])]
+
+    if a.merge_manual:
+        from .merge_manual import merge_store
+
+        wanted = {x.strip() for x in (a.only or "").split(",") if x.strip()}
+        total, done = 0, 0
+        for st in stores:
+            if wanted and st["id"] not in wanted:
+                continue
+            if not (st.get("lat") and st.get("lng")):
+                pt = geocoder.geocode(st.get("address", ""))
+                if not pt:
+                    continue
+                st["lat"], st["lng"] = pt
+            r = merge_store(st, settings, geocoder, a.out, a.docs, os.environ.get("GITHUB_REPOSITORY", a.repo), _write_latest(a.out))
+            if r:
+                done += 1
+                total += r[0]
+        geocoder.save()
+        write_index(a.docs, a.stores)
+        log.info("CSV取込を反映: %d 店・%d 件", done, total)
+        if os.environ.get("GITHUB_STEP_SUMMARY"):
+            with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+                f.write(f"CSV取込を反映: {done} 店・{total} 件\n")
+        return 0
 
     if a.build_areas:
         prefs = set()
@@ -146,16 +188,7 @@ def main(argv=None) -> int:
         write_markdown(res, md, run_date, files)
         append_history(res, os.path.join(a.out, st["id"], "history.csv"), run_date)
         write_dashboard(res, run_date, os.path.join(a.out, st["id"], "history.csv"), a.docs, os.environ.get("GITHUB_REPOSITORY", a.repo))
-        # 最新版へのショートカット
-        latest = os.path.join(a.out, st["id"], "latest.md")
-        with open(md, encoding="utf-8") as f:
-            body = f.read()
-        rel = run_date + "/"
-        for v in files.values():
-            b = os.path.basename(v)
-            body = body.replace(f"]({b})", f"]({rel}{b})")
-        with open(latest, "w", encoding="utf-8") as f:
-            f.write(body)
+        body = _write_latest(a.out)(st["id"], run_date, md, files)
         log.info("出力: %s（%d 件, リクエスト %d）", out_dir, len(res.rows), res.requests)
         if os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:

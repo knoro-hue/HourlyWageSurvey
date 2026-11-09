@@ -154,3 +154,53 @@ def test_main_end_to_end_without_network(tmp_path, monkeypatch):
                  "--areas", str(tmp_path / "none.json"), "--date", "2099-01-01"])
     assert rc in (0, 1)
     assert (tmp_path / "docs" / "stores.json").exists()
+
+
+def test_parse_benefit_text_keeps_slash_in_value():
+    from wage_survey.merge_manual import parse_benefit_text
+
+    b = parse_benefit_text("交通費:別途一部支給／昇給:あり／その他:日払い／週払い、制服貸与")
+    assert b == {"transport": "別途一部支給", "raise": "あり", "features": "日払い／週払い、制服貸与"}
+    assert parse_benefit_text("") is None
+
+
+def test_merge_manual_without_resurvey(tmp_path, monkeypatch):
+    """調査結果を保存 → CSV を置いて --merge-manual → 再取得なしで Indeed 分が入り、待遇・既存行は保たれる"""
+    import json
+
+    import yaml
+
+    from wage_survey import main as m
+    from wage_survey.collector import StoreResult
+    from wage_survey.records import JobRow
+
+    def fake(st, *a, **k):
+        r = JobRow(store_id=st["id"], classification="③直接競合", site="マイナビバイト", job_id="1", url="https://m/1",
+                   company="A電機", shop="なんば", occupation="販売", category="家電", employment="アルバイト・パート",
+                   wage_type="時給", wage_min=1300, wage_max=None, wage_text="時給1300円", hourly_min=1300, hourly_max=None,
+                   address="大阪市", station="", lat=None, lng=None, location_method="掲載座標", distance_km=1.0, shift="",
+                   work_content="", publication_start="", publication_end="",
+                   benefits={"transport": "全額支給", "features": "日払い／週払い"})
+        return StoreResult(store=st, rows=[r])
+
+    monkeypatch.setattr(m, "collect_store", fake)
+    st = yaml.safe_load(open("config/settings.yaml", encoding="utf-8"))
+    man = tmp_path / "manual"
+    man.mkdir()
+    st.update({"manual_jobs_dir": str(man), "manual_jobs_csv": str(tmp_path / "none.csv"),
+               "geocode_cache": str(tmp_path / "geo.json")})
+    sp = tmp_path / "settings.yaml"
+    sp.write_text(yaml.safe_dump(st, allow_unicode=True), encoding="utf-8")
+    common = ["--settings", str(sp), "--out", str(tmp_path / "reports"), "--docs", str(tmp_path / "docs"),
+              "--areas", str(tmp_path / "none.json")]
+    m.main(common + ["--store", "dospara-namba", "--date", "2099-01-01"])
+    (man / "indeed.csv").write_text(
+        "store_id,classification,site,company,shop,occupation,employment,wage_type,wage_min,wage_max,address,work_content,url,checked_date\n"
+        "dospara-namba,③直接競合,Indeed,B電機,,販売,アルバイト・パート,時給,1500,,,,https://i/1,2099-01-01\n", encoding="utf-8")
+    for _ in range(2):  # 2回反映しても二重にならない
+        assert m.main(common + ["--merge-manual", "--only", "dospara-namba"]) == 0
+    d = json.load(open(tmp_path / "docs" / "dospara-namba" / "data.json", encoding="utf-8"))
+    assert d["summary"]["direct"]["n"] == 2 and d["summary"]["direct"]["median"] == 1400
+    assert d["benefits"] and d["benefits"][0]["features"] == "日払い／週払い"
+    s = {e["id"]: e for e in json.load(open(tmp_path / "docs" / "stores.json", encoding="utf-8"))}
+    assert s["dospara-namba"]["sites"] == {"mynavi": 1, "indeed": 1, "other": 0}
