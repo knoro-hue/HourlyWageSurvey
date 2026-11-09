@@ -519,9 +519,15 @@
         }).catch(() => null);
         if (!r || !r.ok) {
           const st = r ? r.status : 0;
-          if (st === 401 || st === 403 || st === 404) openToken('キーの権限が足りません。キーを作り直し、Actions と Contents の両方を Read and write にしてください。');
-          else alert(`アップロードに失敗しました（${st}）。`);
-          impStatus([`アップロードに失敗しました（${it.file.name}）。`]);
+          let detail = '';
+          try { detail = r ? ((await r.json()).message || '') : 'GitHub に接続できません（社内ネットワークの制限など）'; } catch (e) { /* 本文なし */ }
+          const why = st === 401 ? 'キーが無効か期限切れです。作り直してください。'
+            : st === 403 || st === 404 ? 'キーに CSV を置く権限がありません。キーの設定で「Contents」を Read and write にし、対象リポジトリに HourlyWageSurvey が入っているか確認してください。'
+            : st === 409 || st === 422 ? '同じ名前のファイルがあるか、内容を受け付けませんでした。もう一度お試しください。'
+            : st === 0 ? 'GitHub に接続できませんでした。ネットワークを確認してください。' : 'GitHub 側でエラーになりました。時間をおいてお試しください。';
+          if (st === 401 || st === 403 || st === 404) openToken(why);
+          const bb = document.createElement('b'); bb.textContent = `アップロードに失敗しました（${it.file.name}）。`;
+          impStatus([bb, ` ${why}（エラーコード ${st}${detail ? '：' + detail : ''}）`]);
           return;
         }
       }
