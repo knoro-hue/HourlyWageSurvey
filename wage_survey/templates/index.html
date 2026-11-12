@@ -50,7 +50,16 @@
   .src .zero { opacity: .6; }
   .srcline { display: none; margin-top: 2px; }
   @media (max-width: 760px) { .srcline { display: block; } }
-  .gapbar { display: inline-block; width: 90px; height: 10px; position: relative; vertical-align: middle; margin-left: 8px; }
+  .stack { display: grid; justify-items: end; line-height: 1.35; }
+  .stack .v { font-variant-numeric: tabular-nums; }
+  .stack .g { font-size: 12px; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 6px; }
+  .stack .g.none { color: var(--muted); }
+  .th2 { display: block; }
+  .sorts { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+  .sorts button { color: var(--ind); padding: 0 2px; }
+  th[aria-sort="ascending"] .sorts button.on::after { content: " ▲"; }
+  th[aria-sort="descending"] .sorts button.on::after { content: " ▼"; }
+  .gapbar { display: inline-block; width: 56px; height: 8px; position: relative; vertical-align: middle; }
   .gapbar::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: .5; }
   .gapbar i { position: absolute; top: 0; height: 100%; border-radius: 2px; }
   .dl-links { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
@@ -209,7 +218,7 @@
 
   <section class="card">
     <h2>店舗一覧</h2>
-    <p class="note">店舗名を押すと、その店舗のレポートを開きます。差額は「自店の募集時給 − 周辺相場」。赤はマイナス（相場より低い）。見出しを押すと並び替え。</p>
+    <p class="note">店舗名を押すと、その店舗のレポートを開きます。②③の下段は「①自店の募集時給 − 相場」の差額。赤はマイナス（相場より低い）。見出しの「相場」「①との差」を押すと並び替え。</p>
     <div class="runbar">
       <div class="runbar-main">
         <span id="sel-count" class="sel-count">—</span>
@@ -233,10 +242,8 @@
           <th class="hide-narrow"><button type="button" data-sort="src_total" title="②③として集計した求人の件数（サイト別）">調査した求人</button></th>
           <th class="hide-narrow"><button type="button" data-sort="region">地域</button></th>
           <th class="num"><button type="button" data-sort="own">① 自店時給</button></th>
-          <th class="num"><button type="button" data-sort="indirect">② 周辺相場（5km）</button></th>
-          <th class="num"><button type="button" data-sort="gap_ind">差額（②比）</button></th>
-          <th class="num"><button type="button" data-sort="direct">③ 直接競合</button></th>
-          <th class="num hide-narrow"><button type="button" data-sort="gap_dir">差額（③比）</button></th>
+          <th class="num"><span class="th2">② 周辺相場（5km）</span><span class="sorts"><button type="button" data-sort="indirect">相場</button>｜<button type="button" data-sort="gap_ind">①との差</button></span></th>
+          <th class="num"><span class="th2">③ 直接競合（10km）</span><span class="sorts"><button type="button" data-sort="direct">相場</button>｜<button type="button" data-sort="gap_dir">①との差</button></span></th>
           <th class="num hide-narrow"><button type="button" data-sort="postings">周辺求人数</button></th>
           <th class="hide-narrow"><button type="button" data-sort="run_date">調査日</button></th>
         </tr></thead>
@@ -336,14 +343,25 @@
     return box;
   }
   function cell(tr, text, cls) { const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = text; tr.appendChild(td); return td; }
-  function gapCell(tr, g, bar, extra) {
-    const td = cell(tr, g == null ? '—' : (g > 0 ? '+' : g < 0 ? '−' : '±') + yen(Math.abs(g)), 'num ' + (extra || '') + (g < 0 ? ' neg' : g > 0 ? ' pos' : ''));
-    if (bar && g != null) {
-      const b = document.createElement('span'); b.className = 'gapbar';
-      const i = document.createElement('i'); const w = Math.min(50, Math.abs(g) / maxGap * 50);
-      i.style.width = w + '%'; i.style.left = g < 0 ? (50 - w) + '%' : '50%'; i.style.background = g < 0 ? 'var(--bad)' : 'var(--ok)';
-      b.appendChild(i); td.appendChild(b);
+  // 相場（上段）と ①自店との差額（下段）を1つのセルに縦に並べる
+  function stackCell(tr, v, g, bar) {
+    const td = document.createElement('td'); td.className = 'num';
+    const box = document.createElement('div'); box.className = 'stack';
+    const top = document.createElement('span'); top.className = 'v'; top.textContent = yen(v); box.appendChild(top);
+    const gl = document.createElement('span');
+    if (v == null) { gl.className = 'g none'; gl.textContent = ''; }
+    else if (g == null) { gl.className = 'g none'; gl.textContent = '①比 —'; }
+    else {
+      gl.className = 'g ' + (g < 0 ? 'neg' : g > 0 ? 'pos' : '');
+      if (bar) {
+        const b = document.createElement('span'); b.className = 'gapbar';
+        const i = document.createElement('i'); const w = Math.min(50, Math.abs(g) / maxGap * 50);
+        i.style.width = w + '%'; i.style.left = g < 0 ? (50 - w) + '%' : '50%'; i.style.background = g < 0 ? 'var(--bad)' : 'var(--ok)';
+        b.appendChild(i); gl.appendChild(b);
+      }
+      gl.append((g > 0 ? '+' : g < 0 ? '−' : '±') + yen(Math.abs(g)));
     }
+    box.appendChild(gl); td.appendChild(box); tr.appendChild(td);
   }
   function draw() {
     const q = $('q').value.trim(), reg = $('region').value;
@@ -371,10 +389,8 @@
       cell(tr, '', 'hide-narrow').appendChild(srcNode(s));
       cell(tr, s.region || s.pref || '', 'hide-narrow');
       cell(tr, s.run_date ? (s.own != null ? yen(s.own) : '求人掲載なし') : '—', 'num');
-      cell(tr, yen(s.indirect), 'num');
-      gapCell(tr, s.gap_ind, true);
-      cell(tr, yen(s.direct), 'num');
-      gapCell(tr, s.gap_dir, false, 'hide-narrow');
+      stackCell(tr, s.indirect, s.gap_ind, true);
+      stackCell(tr, s.direct, s.gap_dir, true);
       cell(tr, s.postings != null ? fmt.format(s.postings) + '件' : '—', 'num hide-narrow');
       cell(tr, s.run_date || '—', 'hide-narrow');
       tb.appendChild(tr);
@@ -390,7 +406,8 @@
   });
   document.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => {
     const k = b.dataset.sort; sort.dir = sort.key === k ? -sort.dir : 1; sort.key = k;
-    document.querySelectorAll('[data-sort]').forEach((o) => o.closest('th').setAttribute('aria-sort', o === b ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none'));
+    document.querySelectorAll('[data-sort]').forEach((o) => { o.classList.toggle('on', o === b); if (o !== b && !o.closest('th').contains(b)) o.closest('th').setAttribute('aria-sort', 'none'); });
+    b.closest('th').setAttribute('aria-sort', sort.dir > 0 ? 'ascending' : 'descending');
     draw();
   }));
   // ---- 調査対象の選択・今から調査 ----
@@ -561,6 +578,7 @@
   });
   $('token-clear').addEventListener('click', () => { try { localStorage.removeItem('iwc_gh_token'); } catch (e) { /* なし */ } $('token-msg').textContent = '削除しました。'; });
 
+  { const b0 = document.querySelector('[data-sort="gap_ind"]'); b0.classList.add('on'); b0.closest('th').setAttribute('aria-sort', 'ascending'); }
   draw(); updateSel(); pollRuns();
 })();
 </script>
