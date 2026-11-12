@@ -1,0 +1,22 @@
+name: 一時確認（doda）
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          UA="Mozilla/5.0 (compatible; HourlyWageSurvey/1.0)"
+          echo "=== robots doda.jp"; curl -sSL -m 30 -A "$UA" https://doda.jp/robots.txt | head -80
+          for u in https://doda.jp/guide/kiyaku/ https://doda.jp/help/kiyaku/ https://doda.jp/consumer/kiyaku/ https://doda.jp/guide/kiyaku.html; do
+            code=$(curl -sSL -m 30 -A "$UA" -o /tmp/k.html -w "%{http_code}" "$u"); echo "=== $u $code"
+            if [ "$code" = 200 ]; then python3 - <<'PY'
+          import re,html
+          t=open('/tmp/k.html',encoding='utf-8',errors='ignore').read()
+          t=re.sub(r'<script.*?</script>|<style.*?</style>','',t,flags=re.S); t=html.unescape(re.sub(r'<[^>]+>',' ',t)); t=re.sub(r'\s+',' ',t)
+          for k in ['自動','ロボット','クローラ','スクレイピング','機械的','プログラム','収集','複製','AI','人工知能']:
+              for m in re.finditer(k,t):
+                  print(k,'|',t[max(0,m.start()-120):m.end()+120]); break
+          PY
+            fi
+          done
+          echo "=== top links with kiyaku"; curl -sSL -m 30 -A "$UA" https://doda.jp/ | grep -o 'href="[^"]*\(kiyaku\|terms\|rule\)[^"]*"' | sort -u | head
