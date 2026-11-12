@@ -56,21 +56,11 @@
 
 （参考）Claude のウェブ検索で Indeed・バイトル等も調べる機能が入っていますが、有料のため `config/settings.yaml` の `competitor_research.enabled: false` で停止しています。
 
-## 自動で取れない媒体の扱い（Indeed・バイトル・タウンワーク等）
+## Indeed・バイトル・タウンワーク等
 
-Indeed・タウンワーク（Indeed統合）・バイトル等は利用規約やアクセス制限によって自動取得の対象外です。必要な求人は
-[`data/manual_jobs.csv`](data/manual_jobs.csv) に1行ずつ追記すると、次回の実行から距離計算・集計に含まれます。
+扱いません（社内判断）。②③はマイナビバイトのみです。
 
-**Indeed 収集ボタン**：https://knoro-hue.github.io/HourlyWageSurvey/tools/indeed.html
-ボタンをブックマークバーに入れ、Indeed を開いて押すと、選んだ店舗の周辺をページ送りで集めて CSV にします（担当者が画面の前で操作する前提。1ページ6秒以上の間隔）。
-保存した CSV を [`data/manual`](data/manual) フォルダにアップロードすると次回の調査から取り込まれます（確認日から60日を過ぎた行は除外）。
-
-```csv
-store_id,classification,site,company,shop,occupation,employment,wage_type,wage_min,wage_max,address,work_content,url,checked_date
-dospara-namba,own,Indeed,株式会社サードウェーブ,ドスパラ大阪・なんば店,販売スタッフ,アルバイト・パート,時給,1250,,大阪府大阪市浪速区日本橋3丁目6-22,PC・パーツの販売・接客,https://...,2026-11-06
-```
-
-`classification` は `own` / `direct` / `indirect`。自店時給を社内値で入れる場合は `config/stores.yaml` の `own_hourly_wage_manual` でも可。
+自店時給を社内値で入れる場合は `config/stores.yaml` の `own_hourly_wage_manual` を使います。
 
 ## 実行
 
@@ -108,7 +98,6 @@ python -m wage_survey.main --store dospara-namba
 ```
 config/stores.yaml        店舗設定
 config/settings.yaml      共通設定（アクセス間隔・直接競合の判定ルール）
-data/manual_jobs.csv      手入力求人（Indeed等）
 data/geocode_cache.json   ジオコーディングキャッシュ
 wage_survey/              本体（mynavi.py 取得・解析 / records.py 正規化・分類 / report.py 出力）
 reports/                  出力（自動コミット）

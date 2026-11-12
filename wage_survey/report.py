@@ -269,7 +269,7 @@ def write_markdown(res: StoreResult, path: str, run_date: str, files: dict[str, 
         ],
     ))
     if not s_own["n"] and not own_wage:
-        lines += ["", "> ①自店の求人は自動取得対象サイトで見つかりませんでした。`data/manual_jobs.csv` に自店求人（Indeed等）を追記するか、`config/stores.yaml` の `own_hourly_wage_manual` を設定してください。"]
+        lines += ["", "> ①自店の求人は自動取得対象サイトで見つかりませんでした。社内の時給を使う場合は `config/stores.yaml` の `own_hourly_wage_manual` を設定してください。"]
     lines += ["", "## ③直接競合（距離順）", ""]
     d = sorted(cls.get(CLASS_DIRECT, []), key=lambda r: r.distance_km or 0)
     lines.append(_md_table(["距離km", "企業", "店舗", "職種", "給与", "業務範囲(抜粋)", "サイト"],

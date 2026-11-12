@@ -1,4 +1,4 @@
 date,store_id,own_hourly,direct_n,direct_median,direct_max,indirect_n,indirect_median,indirect_p75,area_total_postings,direct_median_nd,indirect_median_nd
 2026-11-06,dospara-machida,,29,1600.0,1600.0,327,1330.0,1625.0,2011,,
 2026-11-07,dospara-machida,,50,1600.0,1600.0,663,1350.0,1625.0,3213,,
-2026-11-08,dospara-machida,,98,1395.0,2700.0,655,1400.0,1600.0,3216,1379.0,1300.0
+2026-11-08,dospara-machida,,7,1600.0,2050.0,655,1400.0,1600.0,3216,1525.0,1300.0

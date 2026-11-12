@@ -179,7 +179,7 @@
   <details>
     <summary>集計方法と除外しているもの</summary>
     <p>時給は各求人の下限額。日給・月給の求人は時給の集計に含めず、一覧には載せています。同じ企業・職種・時給の求人は1件として集計します。「派遣の求人を含める」を外すと、雇用形態が派遣社員・紹介予定派遣の求人を除いて集計・表示します（設定はブラウザに保存され、全店で共通）。距離は求人の掲載座標から店舗までの直線距離です。派遣会社など本社住所が載っている求人は、勤務地の表記や最寄駅から位置を推定しています。</p>
-    <p>① 自店の時給は自社採用サイトの掲載値。② ③ はマイナビバイトの掲載求人で、サイトの規則により区×職種ごとに先頭30件まで取得しています。Indeed・バイトル・タウンワークは自動取得の対象外です（手入力CSVで追加できます）。</p>
+    <p>① 自店の時給は自社採用サイトの掲載値。② ③ はマイナビバイトの掲載求人で、サイトの規則により区×職種ごとに先頭30件まで取得しています。Indeed・バイトル・タウンワークは扱いません。</p>
     <p id="notes"></p>
   </details>
 </main>
@@ -476,7 +476,7 @@
     }
     const el = $('srcs'); el.replaceChildren('調査した求人：');
     const part = (label, n) => { const sp = document.createElement('span'); if (!n) sp.className = 'zero'; const b = document.createElement('b'); b.textContent = d3.format(',')(n); sp.append(label + ' ', b, '件'); return sp; };
-    el.append(part('マイナビバイト', c.mynavi), ' / ', part('Indeed', c.indeed));
+    el.append(part('マイナビバイト', c.mynavi));
     if (c.other) el.append(' / ', part('その他', c.other));
     el.append(include ? '（派遣を含む）' : '（派遣を除く）');
   }
