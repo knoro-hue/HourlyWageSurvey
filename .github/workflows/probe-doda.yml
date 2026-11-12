@@ -4,11 +4,12 @@ jobs:
   p:
     runs-on: ubuntu-latest
     steps:
-      - run: |
+      - shell: bash {0}
+        run: |
           UA="Mozilla/5.0 (compatible; HourlyWageSurvey/1.0)"
-          echo "=== robots doda.jp"; curl -sSL -m 30 -A "$UA" https://doda.jp/robots.txt | head -80
+          echo "=== robots doda.jp"; curl --http1.1 -sSL -m 30 -A "$UA" https://doda.jp/robots.txt | head -80
           for u in https://doda.jp/guide/kiyaku/ https://doda.jp/help/kiyaku/ https://doda.jp/consumer/kiyaku/ https://doda.jp/guide/kiyaku.html; do
-            code=$(curl -sSL -m 30 -A "$UA" -o /tmp/k.html -w "%{http_code}" "$u"); echo "=== $u $code"
+            code=$(curl --http1.1 -sSL -m 30 -A "$UA" -o /tmp/k.html -w "%{http_code}" "$u"); echo "=== $u $code"
             if [ "$code" = 200 ]; then python3 - <<'PY'
           import re,html
           t=open('/tmp/k.html',encoding='utf-8',errors='ignore').read()
@@ -19,4 +20,4 @@ jobs:
           PY
             fi
           done
-          echo "=== top links with kiyaku"; curl -sSL -m 30 -A "$UA" https://doda.jp/ | grep -o 'href="[^"]*\(kiyaku\|terms\|rule\)[^"]*"' | sort -u | head
+          echo "=== top links with kiyaku"; curl --http1.1 -sSL -m 30 -A "$UA" https://doda.jp/ | grep -o 'href="[^"]*\(kiyaku\|terms\|rule\)[^"]*"' | sort -u | head
