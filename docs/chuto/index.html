@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>中途採用 年収相場</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <div>
+    <div class="crumb"><a href="../">← アルバイト時給調査（全店）</a></div>
+    <h1>ドスパラ全店 中途採用 年収相場</h1>
+    <p class="lede" id="lede">読み込み中…</p>
+  </div>
+
+  <section class="card warn">
+    <p><b>部内の判断材料のみ。外部へ提供しないでください。</b>求人は doda の検索結果画面を担当者が手作業（ローカルの Claude アプリによる画面読み取り）で少量・低頻度に記録したものです。doda の利用規約には私的利用の範囲を超える利用・第三者提供の禁止があります（適用範囲は要確認）。</p>
+  </section>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2>データの追加</h2>
+    <ol>
+      <li><a href="prompt.html">指示文ジェネレータ</a>で店舗を選び、指示文をコピーしてローカルの Claude アプリに貼る</li>
+      <li>出力された CSV を UTF-8 で保存（例 <code>doda_dospara-namba_20261112.csv</code>）</li>
+      <li>GitHub の <a id="upload" href="https://github.com/knoro-hue/HourlyWageSurvey/upload/main/data/doda" target="_blank" rel="noopener">data/doda/ へアップロード</a>（Commit changes）→ 数分でこのページに反映</li>
+    </ol>
+    <div class="links"><a class="btn" href="prompt.html">指示文ジェネレータを開く</a></div>
+  </section>
+
+  <section class="card">
+    <h2>店舗一覧</h2>
+    <p class="note" id="tnote"></p>
+    <div class="controls">
+      <input id="q" type="search" placeholder="店舗名・地域で絞り込み" aria-label="店舗名・地域で絞り込み">
+      <select id="filt" aria-label="表示対象"><option value="">全店</option><option value="got">取得済みのみ</option><option value="none">未取得のみ</option></select>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr>
+          <th>店舗</th><th class="hide-sm">地域</th><th class="num">件数</th><th class="num">年収下限 中央値</th>
+          <th class="num">③直接競合 中央値</th><th class="num hide-sm">月給のみ</th><th>確認日</th>
+        </tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>比較基準（国の賃金統計）</h2>
+    <div id="bench"></div>
+  </section>
+
+  <section class="card">
+    <h2>集計の方法</h2>
+    <ul id="method"></ul>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const man = (v) => v == null ? "—" : `${Number(v).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}万円`;
+function statCell(s) {
+  if (!s || !s.n) return '<span class="pending">—</span>';
+  return `${man(s.median)}<span class="sub">${s.n >= 2 ? `${s.p25}〜${s.p75}・` : ""}${s.n}件</span>`;
+}
+function median(a) { a = a.filter((x) => x != null).sort((x, y) => x - y); if (!a.length) return null; const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function bench(b) {
+  const rows = (b.items || []).map((it) => `<tr><td>${esc(it.occupation)}</td><td class="num">${it.annual_man != null ? man(it.annual_man) : '<span class="pending">要確認</span>'}</td>
+    <td class="num hide-sm">${it.monthly_scheduled_yen != null ? Number(it.monthly_scheduled_yen).toLocaleString() + "円" : '<span class="pending">要確認</span>'}</td>
+    <td class="num hide-sm">${it.annual_bonus_yen != null ? Number(it.annual_bonus_yen).toLocaleString() + "円" : '<span class="pending">要確認</span>'}</td></tr>`).join("");
+  return `<div class="tablebox"><table><thead><tr><th>職種</th><th class="num">年収目安</th><th class="num hide-sm">所定内給与（月）</th><th class="num hide-sm">年間賞与等</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note">出典：${b.source_url ? `<a href="${esc(b.source_url)}" target="_blank" rel="noopener">${esc(b.source)}</a>` : esc(b.source)}／年次：${b.year ? esc(b.year) : "要確認"}。年収目安＝きまって支給する現金給与額×12＋年間賞与その他特別給与額。全国値で、地域・企業規模・経験年数の違いは考慮していません。値は出典で確認できたものだけ載せています（未確認は「要確認」）。</p>`;
+}
+fetch("data.json", { cache: "no-store" }).then((r) => r.json()).then((d) => {
+  const st = d.stores, got = st.filter((s) => s.total > 0);
+  const allMed = median(got.map((s) => s.all.median)), dirMed = median(got.map((s) => s.direct.median));
+  const nJobs = got.reduce((a, s) => a + (s.all.n || 0), 0);
+  $("lede").innerHTML = `各店から<b>半径${d.radius_km}km以内</b>の正社員・契約社員の求人（doda）を、<b>年収の下限</b>で集計。確認日から${d.max_age_days}日を過ぎた求人は除外しています。集計日 ${esc(d.today)}。`;
+  $("tiles").innerHTML = [
+    ["取得済み店舗", `${got.length}<small> / ${st.length}店</small>`, "CSV が1件以上ある店舗"],
+    ["集計対象の求人", `${nJobs}<small>件</small>`, `年収表記あり・${d.radius_km}km以内・自社除く`],
+    ["年収下限（店舗中央値の中央値）", allMed == null ? "—" : `${allMed.toFixed(0)}<small>万円</small>`, "全職種"],
+    ["③直接競合（同上）", dirMed == null ? "—" : `${dirMed.toFixed(0)}<small>万円</small>`, "家電量販・PC関連"],
+  ].map(([l, v, n]) => `<div class="tile"><span class="label">${l}</span><span class="value">${v}</span><span class="note">${n}</span></div>`).join("");
+  $("tnote").textContent = `CSV ${d.csv_rows}行（重複 ${d.dup_removed}行・期限切れ ${d.expired}行を除外）。中央値の下は25〜75%の範囲と件数。店舗名をクリックで店舗別ページ。` + (d.unknown_store_ids.length ? `／店舗一覧に無い store_id：${d.unknown_store_ids.join(", ")}` : "");
+  const render = () => {
+    const q = $("q").value.trim(), f = $("filt").value;
+    $("tb").innerHTML = st.filter((s) => (!q || (s.name + s.region + s.pref + s.address).includes(q)) && (!f || (f === "got") === (s.total > 0))).map((s) => s.total
+      ? `<tr><td><a href="${s.id}/">${esc(s.name)}</a></td><td class="hide-sm">${esc(s.region)}</td><td class="num">${s.near}<span class="sub">全${s.total}件</span></td>
+         <td class="num">${statCell(s.all)}</td><td class="num">${statCell(s.direct)}</td><td class="num hide-sm">${s.monthly_only_n || "—"}</td>
+         <td>${esc(s.checked_to)}${s.checked_from !== s.checked_to ? `<span class="sub">${esc(s.checked_from)}〜</span>` : ""}</td></tr>`
+      : `<tr><td><a href="${s.id}/">${esc(s.name)}</a></td><td class="hide-sm">${esc(s.region)}</td><td colspan="5"><span class="pending">未取得</span></td></tr>`).join("");
+  };
+  $("q").addEventListener("input", render); $("filt").addEventListener("change", render); render();
+  $("bench").innerHTML = bench(d.benchmarks);
+  $("method").innerHTML = [
+    `取得：担当者がローカルの Claude アプリに<a href="prompt.html">定型の指示文</a>を貼り、doda の検索結果（各検索の1ページ目のみ・数秒間隔）の文字を CSV にしたもの。サーバーからの自動取得はしていません。`,
+    `重複：同じ店舗の同じ求人URLは1件（確認日の新しい方）。`,
+    `範囲：勤務地（住所・最寄駅）を国土地理院の住所検索／駅データで座標にし、店舗から${d.radius_km}km以内を集計。位置が分からない求人は除外（店舗別ページに表示）。`,
+    `分類：時給調査と同じルール（企業名・職種名）で③直接競合（家電量販・PC関連）とその他に分類。自社（ドスパラ・サードウェーブ）は相場から除外。`,
+    `金額：年収の下限で集計。月給だけの求人は年収に換算せず「月給のみ」の件数として別に表示。`,
+  ].map((x) => `<li>${x}</li>`).join("");
+}).catch(() => { $("lede").textContent = "データを読み込めませんでした。"; });
+</script>
+</body>
+</html>

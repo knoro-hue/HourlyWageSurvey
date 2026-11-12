@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>中途採用 年収相場（店舗）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500&display=swap">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+  <div>
+    <div class="crumb"><a href="../">← 中途採用 年収相場（全店）</a></div>
+    <h1 id="title">読み込み中…</h1>
+    <p class="lede" id="lede"></p>
+  </div>
+
+  <section class="card warn">
+    <p><b>部内の判断材料のみ。外部へ提供しないでください。</b>doda の検索結果画面を担当者が少量・低頻度に記録したデータです（doda 利用規約の私的利用の範囲。適用範囲は要確認）。</p>
+  </section>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card" id="none" hidden>
+    <h2>未取得</h2>
+    <p>この店舗の CSV はまだありません。<a id="plink" href="../prompt.html">指示文ジェネレータ</a>で指示文を作り、出力された CSV を <a href="https://github.com/knoro-hue/HourlyWageSurvey/upload/main/data/doda" target="_blank" rel="noopener">data/doda/</a> にアップロードしてください。</p>
+  </section>
+
+  <section class="card" id="dircard">
+    <h2>③直接競合（家電量販・PC関連）</h2>
+    <div class="tablebox"><table><thead id="dh"></thead><tbody id="db"></tbody></table></div>
+  </section>
+
+  <section class="card" id="allcard">
+    <h2>全求人（半径内）</h2>
+    <div class="controls">
+      <input id="q" type="search" placeholder="企業名・求人名で絞り込み" aria-label="企業名・求人名で絞り込み">
+      <select id="g" aria-label="区分"><option value="">すべて</option><option>③直接競合</option><option>その他</option><option>自社</option></select>
+    </div>
+    <div class="tablebox"><table><thead id="ah"></thead><tbody id="ab"></tbody></table></div>
+    <p class="note">年収は求人に書かれた範囲。月給だけの求人は年収に換算していません（相場の計算から除外）。</p>
+  </section>
+
+  <section class="card" id="excard">
+    <h2>集計から除外した求人</h2>
+    <p class="note" id="exnote"></p>
+    <div class="tablebox"><table><thead id="eh"></thead><tbody id="eb"></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>比較基準（国の賃金統計）</h2>
+    <div id="bench"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const man = (v) => v == null ? "—" : `${Number(v).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}万円`;
+const safeUrl = (u) => /^https?:\/\//i.test(u || "") ? u : "";
+function salary(j) {
+  if (j.salary_min_man || j.salary_max_man) return `${j.salary_min_man ?? "—"}〜${j.salary_max_man ?? ""}万円`;
+  if (j.monthly_min_yen) return `<span class="tag">月給のみ</span> ${Number(j.monthly_min_yen).toLocaleString()}円〜`;
+  return '<span class="pending">記載なし</span>';
+}
+const HEAD = '<tr><th>区分</th><th>企業</th><th>求人名</th><th class="num">年収（万円）</th><th>雇用形態</th><th class="num">距離</th><th class="hide-sm">勤務地</th><th class="hide-sm">確認日</th></tr>';
+function row(j) {
+  const tag = j.group === "③直接競合" ? '<span class="tag dir">③直接</span>' : j.group === "自社" ? '<span class="tag own">自社</span>' : '<span class="tag">その他</span>';
+  const u = safeUrl(j.url);
+  return `<tr><td>${tag}</td><td class="wrap">${esc(j.company)}${j.matched_by ? `<span class="sub">${esc(j.matched_by)}</span>` : ""}</td>
+    <td class="wrap">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(j.job_title || "(求人名なし)")}</a>` : esc(j.job_title)}<span class="sub">${esc(j.job_category)}</span></td>
+    <td class="num">${salary(j)}</td><td>${esc(j.employment) || '<span class="pending">—</span>'}</td>
+    <td class="num">${j.distance_km == null ? '<span class="pending">不明</span>' : j.distance_km.toFixed(1) + "km"}</td>
+    <td class="wrap hide-sm">${esc(j.work_location)}<span class="sub">${esc(j.location_method)}</span></td><td class="hide-sm">${esc(j.checked_date)}</td></tr>`;
+}
+function bench(b) {
+  const rows = (b.items || []).map((it) => `<tr><td>${esc(it.occupation)}</td><td class="num">${it.annual_man != null ? man(it.annual_man) : '<span class="pending">要確認</span>'}</td></tr>`).join("");
+  return `<div class="tablebox"><table><thead><tr><th>職種</th><th class="num">年収目安</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note">出典：${esc(b.source)}／年次：${b.year ? esc(b.year) : "要確認"}。全国値（地域差は考慮なし）。未確認の値は「要確認」。</p>`;
+}
+fetch("data.json", { cache: "no-store" }).then((r) => r.json()).then((d) => {
+  const s = d.store;
+  document.title = `${s.name} 中途採用 年収相場`;
+  $("title").textContent = `${s.name} 中途採用 年収相場`;
+  $("plink").href = `../prompt.html#${encodeURIComponent(s.id)}`;
+  $("lede").innerHTML = `${esc(s.address)}／店舗から<b>半径${d.radius_km}km以内</b>の正社員・契約社員の求人（doda）を<b>年収の下限</b>で集計。` +
+    (s.total ? `確認日 ${esc(s.checked_from)}${s.checked_from !== s.checked_to ? "〜" + esc(s.checked_to) : ""}。` : "");
+  const tile = (l, st, n) => `<div class="tile"><span class="label">${l}</span><span class="value">${st && st.n ? `${Math.round(st.median)}<small>万円</small>` : "—"}</span><span class="note">${st && st.n ? `25〜75%：${st.p25}〜${st.p75}万円・${st.n}件` : n}</span></div>`;
+  $("tiles").innerHTML = tile("年収下限 中央値（全職種）", s.all, "データなし") + tile("③直接競合", s.direct, "該当なし") + tile("その他", s.other, "該当なし") +
+    `<div class="tile"><span class="label">月給のみ・給与記載なし</span><span class="value">${s.monthly_only_n}<small>件</small> / ${s.no_salary_n}<small>件</small></span><span class="note">年収に換算せず相場から除外</span></div>`;
+  if (!s.total) { $("none").hidden = false; ["dircard", "allcard", "excard"].forEach((id) => ($(id).hidden = true)); }
+  const dir = s.jobs.filter((j) => j.group === "③直接競合");
+  $("dh").innerHTML = HEAD;
+  $("db").innerHTML = dir.length ? dir.map(row).join("") : '<tr><td colspan="8"><span class="pending">半径内に該当なし</span></td></tr>';
+  $("ah").innerHTML = HEAD;
+  const render = () => {
+    const q = $("q").value.trim(), g = $("g").value;
+    $("ab").innerHTML = s.jobs.filter((j) => (!g || j.group === g) && (!q || (j.company + j.job_title).includes(q))).map(row).join("") || '<tr><td colspan="8"><span class="pending">該当なし</span></td></tr>';
+  };
+  $("q").addEventListener("input", render); $("g").addEventListener("change", render); render();
+  $("exnote").textContent = `半径${d.radius_km}km超 ${s.far}件・勤務地の位置が分からない ${s.unknown_location}件。位置不明は CSV の work_location に住所か最寄駅を入れると集計されます。`;
+  $("eh").innerHTML = HEAD;
+  $("eb").innerHTML = s.excluded.length ? s.excluded.map(row).join("") : '<tr><td colspan="8"><span class="pending">なし</span></td></tr>';
+  if (!s.excluded.length && s.total) $("excard").hidden = true;
+  $("bench").innerHTML = bench(d.benchmarks);
+}).catch(() => { $("title").textContent = "データを読み込めませんでした"; });
+</script>
+</body>
+</html>

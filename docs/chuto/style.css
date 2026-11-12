@@ -1,0 +1,51 @@
+  :root {
+    --fg: #1d2733; --muted: #5b6775; --line: #dbe3ec; --panel: rgba(255, 255, 255, 0.93); --grid: #e6ecf2;
+    --ind: #2f6fb3; --dir: #e0782f; --own: #c23b3b; --ok: #1f7a4d; --bad: #c0392b; --mute: #c5d0dc;
+    --sans: "Noto Sans JP", system-ui, sans-serif; --serif: "Shippori Mincho", "Noto Serif JP", serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--fg); font-family: var(--sans); font-size: 14px; line-height: 1.6;
+    background-color: #f6f9fc; background-image: linear-gradient(rgba(255,255,255,.62), rgba(255,255,255,.78)), url("../assets/bg.svg");
+    background-size: cover; background-position: center top; background-attachment: fixed; }
+  main { max-width: 1280px; margin: 0 auto; padding-block: 36px 64px; padding-left: max(16px, 3vw); padding-right: max(16px, 3vw); display: grid; gap: 24px; }
+  h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(1.6rem, 3vw, 2.2rem); margin: 0; }
+  .crumb { font-size: 13px; margin-bottom: 6px; } .crumb a { color: var(--ind); text-decoration: none; } .crumb a:hover { text-decoration: underline; }
+  .lede { margin: 6px 0 0; color: var(--muted); max-width: 80ch; font-size: 15px; }
+  .lede b { color: var(--fg); }
+  .tiles { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
+  .tile { display: grid; gap: 4px; padding: 16px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .tile .label { font-size: 12px; color: var(--muted); }
+  .tile .value { font-family: var(--serif); font-size: 1.9rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .tile .value small { font-size: 14px; font-family: var(--sans); color: var(--muted); }
+  .tile .note { font-size: 12px; color: var(--muted); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 12px; min-width: 0; }
+  .card > * { min-width: 0; }
+  .card h2 { margin: 0; font-size: 16px; font-weight: 500; }
+  .note { margin: 0; font-size: 12px; color: var(--muted); }
+  .warn { border-left: 4px solid var(--dir); }
+  .warn p { margin: 0; font-size: 13px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .controls input, .controls select { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--fg); }
+  .controls input { flex: 1 1 14rem; min-width: 0; }
+  .tablebox { overflow: auto; border-top: 1px solid var(--line); max-height: 70vh; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+  th { position: sticky; top: 0; background: #fff; text-align: left; font-weight: 500; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; z-index: 1; }
+  td { padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td.wrap { white-space: normal; min-width: 14rem; }
+  td.num, th.num { text-align: right; }
+  td a { color: var(--fg); font-weight: 500; text-decoration: none; }
+  td a:hover { color: var(--ind); text-decoration: underline; }
+  .pending { color: var(--muted); font-size: 12px; }
+  .sub { display: block; font-size: 11px; color: var(--muted); }
+  .tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); background: #fff; }
+  .tag.dir { border-color: var(--dir); color: var(--dir); }
+  .tag.own { border-color: var(--own); color: var(--own); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--ind); border-radius: 8px; background: var(--ind); color: #fff; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none; }
+  .btn.ghost { background: #fff; color: var(--ind); }
+  .btn:focus-visible { outline: 2px solid var(--ind); outline-offset: 2px; }
+  .links { display: flex; flex-wrap: wrap; gap: 10px; }
+  ol, ul { margin: 0; padding-left: 1.4em; font-size: 13px; line-height: 1.8; }
+  code { background: #eef2f6; padding: 0 4px; border-radius: 4px; }
+  @media (max-width: 760px) { .hide-sm { display: none; } }
+  [hidden] { display: none !important; }

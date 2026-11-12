@@ -76,6 +76,16 @@ pip install -r requirements.txt
 python -m wage_survey.main --store dospara-namba
 ```
 
+## 中途採用（正社員・契約社員）の年収相場
+
+アルバイト時給調査とは別ページです：<https://knoro-hue.github.io/HourlyWageSurvey/chuto/>
+
+- **データの取り方**：doda はサーバーからの自動アクセスを受け付けないため、担当者が会社PCのローカル Claude アプリに[指示文](https://knoro-hue.github.io/HourlyWageSurvey/chuto/prompt.html)を貼り、検索結果画面の文字を CSV にします（各検索の1ページ目のみ・数秒間隔・少量低頻度）。サーバーから doda に取りに行く処理はありません。
+- **取り込み**：CSV を GitHub の画面から `data/doda/` にアップロード → Actions「中途採用 年収相場の集計」（`python -m wage_survey.chuto`）が自動で `docs/chuto/` を更新。手順と列の説明は [data/doda/README.md](data/doda/README.md)。
+- **集計**：URL 重複除去・確認日から90日超を除外・店舗から10km以内・直接競合は時給調査と同じ判定・年収下限の中央値（月給のみは件数だけ）。設定は `config/chuto.yaml`。
+- **注意**：部内の判断材料のみ。外部へ提供しないでください（doda 利用規約の「私的利用の範囲を超える利用・第三者提供の禁止」。適用範囲は要確認）。
+- 比較基準の国の賃金統計（賃金構造基本統計調査・職種別）は `config/chuto.yaml` に出典で確認した値だけを入れます（未入力は「要確認」と表示）。
+
 ## 店舗とエリアの自動設定
 
 - **店舗一覧**：ドスパラ公式サイトの店舗一覧（https://www.dospara.co.jp/shop/inc-shop-list.html）から毎月自動更新（`config/stores.yaml`）。店名が「ドスパラ」で始まる店舗が対象で、併設のデジタルドックは除外。店舗は7グループ（`shard`）に分けて順番に調査。

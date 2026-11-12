@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>指示文ジェネレータ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+  textarea { width: 100%; min-height: 28rem; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--fg); resize: vertical; }
+  .controls select { flex: 1 1 18rem; min-width: 0; width: 100%; }
+  #copied { font-size: 13px; color: var(--ok); }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <div class="crumb"><a href="./">← 中途採用 年収相場（全店）</a></div>
+    <h1>指示文ジェネレータ（doda 読み取り用）</h1>
+    <p class="lede">店舗を選ぶと、<b>会社PCのローカル Claude アプリ</b>にそのまま貼れる指示文を作ります。Claude がブラウザで doda を開き、検索結果の1ページ目を読んで CSV にします。</p>
+  </div>
+
+  <section class="card warn">
+    <p><b>使う前に</b>：画面の前にいる状態で、1店舗ずつ・少量・低頻度で行ってください（目安：1店舗あたり月1回まで）。結果は部内の判断材料のみに使い、外部へ提供しないでください。doda の利用規約（私的利用の範囲を超える利用・第三者提供の禁止）の適用範囲は要確認です。ログイン要求・CAPTCHA・アクセス制限の表示が出たら中止してください。</p>
+  </section>
+
+  <section class="card">
+    <h2>1. 店舗を選ぶ</h2>
+    <div class="controls">
+      <select id="store" aria-label="店舗"><option value="">読み込み中…</option></select>
+    </div>
+    <p class="note" id="info"></p>
+  </section>
+
+  <section class="card">
+    <h2>2. 指示文をコピーして Claude アプリに貼る</h2>
+    <div class="links"><button class="btn" id="copy" type="button">指示文をコピー</button><span id="copied" aria-live="polite"></span></div>
+    <textarea id="out" readonly aria-label="指示文"></textarea>
+  </section>
+
+  <section class="card">
+    <h2>3. CSV を保存してアップロード</h2>
+    <ol>
+      <li>Claude が出力した CSV を、メモ帳などで <b>UTF-8</b> のまま <code id="fname">doda_店舗ID_日付.csv</code> という名前で保存</li>
+      <li>中身をざっと確認（年収・勤務地が画面と合っているか、推測で埋めた値が無いか）</li>
+      <li>GitHub の <a href="https://github.com/knoro-hue/HourlyWageSurvey/upload/main/data/doda" target="_blank" rel="noopener">data/doda/ へのアップロード画面</a>にファイルをドラッグ → 「Commit changes」</li>
+      <li>数分後に<a href="./">年収相場ページ</a>へ反映されます（Actions の「中途採用 年収相場の集計」）</li>
+    </ol>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const today = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const COLS = "store_id,site,company,job_title,employment,salary_min_man,salary_max_man,monthly_min_yen,work_location,job_category,url,checked_date";
+let D = null;
+function prompt(s) {
+  const cats = (D.job_categories || []).map((c) => `「${c}」`).join("・");
+  const nCat = (D.job_categories || []).length;
+  const date = today();
+  return `あなたはブラウザを操作して、転職サイト doda（https://doda.jp/）の求人検索結果を読み取り、CSV にまとめるアシスタントです。
+目的：${s.name}（${s.address}）の周辺で、中途採用（正社員・契約社員）の年収相場を部内の判断材料として把握すること。
+
+## 必ず守ること
+- 私が画面の前にいる状態で、通常のブラウザ操作として行ってください。自動化ツールでの大量取得、アクセス制限やボット対策の回避は一切しないでください。
+- 各検索は「検索結果の1ページ目」だけを見てください。2ページ目以降や、求人の詳細ページは開かないでください。
+- ページを開く間隔は毎回5秒以上あけてください。開くページは合計${4 * nCat}ページまでです。
+- ログイン・会員登録を求められた、CAPTCHA が出た、アクセス制限の表示が出た、のいずれかの場合はすぐに中止し、そこまでの結果と中止理由を報告してください。
+- 画面に書かれている文字だけを使ってください。記載のない値は空欄にし、推測で埋めないでください。
+- 結果は部内の判断材料のみに使い、外部へは提供しません。
+
+## 検索する条件
+- 勤務地：${s.muni || s.address}、およびそれに隣接する市区町村のうち店舗から概ね${D.radius_km}km以内のもの（最大3つまで。どれを選んだか最後に書いてください）
+- 職種（キーワード）：${cats}（それぞれ別の検索にする）
+- 雇用形態：正社員・契約社員（絞り込みが無ければ指定なしでよい）
+- 検索の回数は「勤務地 × 職種」の組み合わせ分。各検索は1ページ目のみ。
+
+## 出力
+検索結果に出ている求人ごとに1行の CSV（UTF-8、ヘッダ付き）を、コードブロック1つにまとめて出力してください。
+列（この順番・この名前）：
+${COLS}
+
+各列の書き方：
+- store_id：常に ${s.id}
+- site：常に doda
+- company：企業名（画面の表記どおり）
+- job_title：求人のタイトル・職種名（画面の表記どおり）
+- employment：雇用形態（正社員／契約社員 など画面の表記どおり。書かれていなければ空欄）
+- salary_min_man / salary_max_man：年収の下限・上限を「万円」の数値で（例：「年収350万円～500万円」→ 350 と 500。「400万円以上」→ 400 と空欄）。年収の表記が無ければ空欄
+- monthly_min_yen：年収の表記が無く月給だけが書かれている場合のみ、月給の下限を円の数値で（例：月給25万円～ → 250000）。年収の表記がある場合は空欄
+- work_location：検索結果に書かれた勤務地の住所または最寄駅（例：${s.muni || s.pref}○○1-2 ／ ○○駅）。書かれていなければ空欄
+- job_category：その求人が出た検索で使った職種キーワード
+- url：その求人へのリンク先URL（検索結果に表示されているもの）
+- checked_date：${date}
+
+注意：
+- 同じ求人（同じURL）が複数の検索に出た場合は1行だけにしてください。
+- 値にカンマや改行が含まれる場合はダブルクォートで囲んでください。
+- アルバイト・パート・派遣の求人は含めないでください。
+- 最後に（CSV の外に）、開いたページ数、選んだ勤務地、中止した場合はその理由を書いてください。`;
+}
+function show() {
+  const s = D.stores.find((x) => x.id === $("store").value);
+  if (!s) return;
+  history.replaceState(null, "", "#" + s.id);
+  $("out").value = prompt(s);
+  $("fname").textContent = `doda_${s.id}_${today().replaceAll("-", "")}.csv`;
+  $("info").textContent = `${s.address}／市区町村：${s.muni || "（住所から判定できず）"}／現在のデータ：${s.total ? `${s.total}件（最終確認 ${s.checked_to}）` : "未取得"}`;
+  $("copied").textContent = "";
+}
+$("copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("out").value); }
+  catch { $("out").select(); document.execCommand("copy"); }
+  $("copied").textContent = "コピーしました";
+});
+fetch("data.json", { cache: "no-store" }).then((r) => r.json()).then((d) => {
+  D = d;
+  const regions = [...new Set(d.stores.map((s) => s.region))];
+  $("store").innerHTML = regions.map((r) => `<optgroup label="${r}">${d.stores.filter((s) => s.region === r).map((s) => `<option value="${s.id}">${s.name}${s.total ? "" : "（未取得）"}</option>`).join("")}</optgroup>`).join("");
+  const want = decodeURIComponent(location.hash.slice(1));
+  if (want && d.stores.some((s) => s.id === want)) $("store").value = want;
+  $("store").addEventListener("change", show); show();
+}).catch(() => { $("info").textContent = "店舗一覧を読み込めませんでした。"; });
+</script>
+</body>
+</html>

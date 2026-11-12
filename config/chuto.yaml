@@ -1,0 +1,30 @@
+# 中途採用（正社員・契約社員）年収相場ページの設定（python -m wage_survey.chuto）
+radius_km: 10          # 店舗からこの距離（直線）以内の求人を集計
+max_age_days: 90       # 確認日（checked_date）からこの日数を超えた求人は集計しない
+csv_dir: data/doda     # 担当者が GitHub の画面からアップロードする CSV の置き場
+
+# 指示文ジェネレータ（docs/chuto/prompt.html）で検索する職種
+job_categories:
+  - 販売・接客
+  - PC・家電販売
+  - 店長候補
+  - PCサポート・修理
+
+# 比較基準：国の賃金統計（賃金構造基本統計調査・職種別）
+# 年収目安 = きまって支給する現金給与額×12 ＋ 年間賞与その他特別給与額（万円）
+# 値は出典の表で確認できたものだけ入れる。未確認は null のまま（ページに「要確認」と表示）。推測値は入れない。
+benchmarks:
+  source: 厚生労働省「賃金構造基本統計調査」職種別（一般労働者・男女計・企業規模計）
+  source_url: https://www.e-stat.go.jp/stat-search/files?toukei=00450091
+  year: null           # 例: 令和6年（2024年）
+  items:
+    - occupation: 販売店員
+      monthly_scheduled_yen: null   # 所定内給与額（円）
+      monthly_contractual_yen: null # きまって支給する現金給与額（円）
+      annual_bonus_yen: null        # 年間賞与その他特別給与額（円）
+      annual_man: null              # 年収目安（万円）。空欄なら上の2項目から自動計算
+    - occupation: 小売店主・店長
+      monthly_scheduled_yen: null
+      monthly_contractual_yen: null
+      annual_bonus_yen: null
+      annual_man: null

@@ -204,3 +204,69 @@ def test_merge_manual_without_resurvey(tmp_path, monkeypatch):
     assert d["benefits"] and d["benefits"][0]["features"] == "日払い／週払い"
     s = {e["id"]: e for e in json.load(open(tmp_path / "docs" / "stores.json", encoding="utf-8"))}
     assert s["dospara-namba"]["sites"] == {"mynavi": 1, "indeed": 1, "other": 0}
+
+
+# ---- 中途採用 年収相場（wage_survey/chuto.py） ----
+CHUTO_CSV = """﻿store_id,site,company,job_title,employment,salary_min_man,salary_max_man,monthly_min_yen,work_location,job_category,url,checked_date
+dospara-namba,doda,株式会社ノジマ,販売スタッフ,正社員,350,500,,大阪府大阪市浪速区日本橋3-6-22,PC・家電販売,https://doda.jp/job/1/,2026-11-01
+dospara-namba,doda,株式会社ノジマ,販売スタッフ,正社員,360,500,,大阪府大阪市浪速区日本橋3-6-22,販売・接客,https://doda.jp/job/1,2026-11-10
+dospara-namba,doda,株式会社A,店長候補,契約社員,,,"250,000",なんば駅,店長候補,https://doda.jp/job/2/,2026-11-05
+dospara-namba,doda,株式会社B,営業,正社員,400万円,,,京都府京都市,販売・接客,https://doda.jp/job/3/,2026-07-01
+,doda,空行,x,,,,,,,,2026-11-01
+"""
+
+
+def _chuto_rows(tmp_path):
+    from wage_survey.chuto import load_csvs
+
+    p = tmp_path / "doda_test.csv"
+    p.write_text(CHUTO_CSV, encoding="utf-8")
+    return load_csvs(str(tmp_path))
+
+
+def test_chuto_read_csv(tmp_path):
+    rows = _chuto_rows(tmp_path)
+    assert len(rows) == 4  # store_id が空の行は捨てる
+    assert rows[0].salary_min_man == 350.0 and rows[0].salary_max_man == 500.0
+    assert rows[2].salary_min_man is None and rows[2].monthly_min_yen == 250000.0
+    assert rows[3].salary_min_man == 400.0 and rows[3].salary_max_man is None
+
+
+def test_chuto_dedupe_and_expire(tmp_path):
+    import datetime as dt
+
+    from wage_survey.chuto import dedupe, drop_expired
+
+    rows = dedupe(_chuto_rows(tmp_path))
+    assert len(rows) == 3  # 末尾スラッシュ違いの同じURLは1件
+    nojima = [r for r in rows if r.company == "株式会社ノジマ"][0]
+    assert nojima.checked_date == "2026-11-10" and nojima.salary_min_man == 360.0  # 新しい方を残す
+    kept, n = drop_expired(rows, dt.date(2026, 11, 12), 90)
+    assert n == 1 and all(r.company != "株式会社B" for r in kept)  # 2026-07-01 は90日超
+
+
+def test_chuto_distance_filter_and_classify(tmp_path):
+    from wage_survey.chuto import GROUP_DIRECT, GROUP_OTHER, annual_stats, classify_job, filter_by_distance, locate
+
+    class FakeGeo:
+        def geocode(self, q):
+            return {"大阪府大阪市浪速区日本橋3-6-22": (34.663, 135.505), "京都府京都市": None}.get(q)
+
+        def station(self, name, pref=""):
+            return (34.6667, 135.5003) if name == "なんば" else None
+
+    store = {"id": "dospara-namba", "lat": 34.663044, "lng": 135.505203, "prefecture_label": "大阪府", "own_keywords": ["ドスパラ"]}
+    settings = {"direct_competitor": {"brand_keywords": ["ノジマ"]}}
+    rows = _chuto_rows(tmp_path)[1:]
+    from wage_survey.geo import haversine_km
+
+    for r in rows:
+        lat, lng, how = locate(r, store, FakeGeo())
+        r.distance_km = haversine_km(store["lat"], store["lng"], lat, lng) if lat is not None else None
+        r.group, _ = classify_job(r, store, settings)
+    assert rows[0].group == GROUP_DIRECT and rows[1].group == GROUP_OTHER
+    rows.append(rows[0].__class__(**{**rows[0].__dict__, "url": "x", "distance_km": 25.0}))
+    near, far, unknown = filter_by_distance(rows, 10)
+    assert [r.company for r in near] == ["株式会社ノジマ", "株式会社A"] and far == 1 and unknown == 1
+    st = annual_stats(near)
+    assert st["n"] == 1 and st["median"] == 360.0  # 月給のみの求人は年収の集計に入れない
