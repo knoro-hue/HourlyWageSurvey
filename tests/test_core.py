@@ -270,3 +270,41 @@ def test_chuto_distance_filter_and_classify(tmp_path):
     assert [r.company for r in near] == ["株式会社ノジマ", "株式会社A"] and far == 1 and unknown == 1
     st = annual_stats(near)
     assert st["n"] == 1 and st["median"] == 360.0  # 月給のみの求人は年収の集計に入れない
+
+
+def test_chuto_attributes_normalized():
+    """文章の列（以前の形式）も選択肢の列（新形式）も、同じ選択肢にそろう"""
+    from wage_survey.chuto import parse_attributes
+
+    old = parse_attributes({
+        "transfer": "無", "transfer_note": "転居を伴う転勤なし", "company_housing": "有", "company_housing_note": "社宅制度",
+        "rent_subsidy": "有", "bonus": "有", "annual_holidays": "120", "holiday_text": "■完全週休2日制 （土日）",
+        "other_benefits": "退職金制度｜家族手当｜資格取得支援｜引越しサポート", "tags": "正社員｜職種未経験歓迎｜転勤なし",
+        "required_experience": "営業・販売・接客いずれかの経験をお持ちの方", "job_title": "店長候補／未経験歓迎",
+    })
+    assert old["transfer"] == "転居なし"
+    assert old["housing"] == ["社宅・寮", "住宅手当", "引越し補助"]
+    assert old["benefits"] == ["賞与", "退職金", "家族手当", "資格支援"]
+    assert old["requirements"] == ["未経験可", "販売・接客経験"]  # 「店長候補／未経験」は管理職経験にしない
+    assert old["other"] == ["完全週休2日", "土日休み"] and old["annual_holidays"] == 120.0
+    new = parse_attributes({"transfer": "転勤あり", "housing": "住宅手当", "benefits": "賞与|交通費",
+                            "requirements": "運転免許", "other_conditions": "車通勤可", "overtime_avg_h": "10"})
+    assert new["transfer"] == "転勤あり" and new["housing"] == ["住宅手当"] and new["benefits"] == ["賞与", "交通費"]
+    assert new["requirements"] == ["運転免許"] and new["other"] == ["車通勤可"] and new["overtime_h"] == 10.0
+    empty = parse_attributes({})
+    assert empty["transfer"] == "" and empty["housing"] == [] and empty["annual_holidays"] is None
+
+
+def test_chuto_locate_falls_back_to_search_area():
+    from wage_survey.chuto import ChutoJob, locate
+
+    class Geo:
+        def geocode(self, q):
+            return (35.69, 139.75) if q == "東京都千代田区" else None
+
+        def station(self, name, pref=""):
+            return None
+
+    j = ChutoJob("dospara-akihabara", "doda", "A社", "販売", "正社員", None, None, None,
+                 "【転勤なし】港区本社または東京・神奈川の各店舗", "販売・接客", "u", "2026-11-13", search_area="東京都千代田区")
+    assert locate(j, {"prefecture_label": "東京都"}, Geo()) == (35.69, 139.75, "検索エリア")

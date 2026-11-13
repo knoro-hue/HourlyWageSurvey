@@ -44,7 +44,7 @@
     <h2>3. CSV を保存してアップロード</h2>
     <ol>
       <li>Claude が出力した CSV を、メモ帳などで <b>UTF-8</b> のまま <code id="fname">doda_店舗ID_日付.csv</code> という名前で保存</li>
-      <li>中身をざっと確認（年収・勤務地が画面と合っているか、推測で埋めた値が無いか）</li>
+      <li>中身をざっと確認（年収・勤務地が画面と合っているか、待遇の列が選択肢だけになっているか、推測で埋めた値が無いか）</li>
       <li>GitHub の <a href="https://github.com/knoro-hue/HourlyWageSurvey/upload/main/data/doda" target="_blank" rel="noopener">data/doda/ へのアップロード画面</a>にファイルをドラッグ → 「Commit changes」</li>
       <li>数分後に<a href="./">年収相場ページ</a>へ反映されます（Actions の「中途採用 年収相場の集計」）</li>
     </ol>
@@ -53,21 +53,24 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const today = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-const COLS = "store_id,site,company,job_title,employment,salary_min_man,salary_max_man,monthly_min_yen,work_location,job_category,url,checked_date";
+const COLS = "store_id,search_area,site,company,job_title,employment,salary_min_man,salary_max_man,monthly_min_yen,bonus,annual_holidays,overtime_avg_h,transfer,housing,requirements,benefits,other_conditions,work_location,job_category,source_level,url,checked_date";
 let D = null;
+const list = (k) => (D.vocab[k] || []).join(" / ");
 function prompt(s) {
   const cats = (D.job_categories || []).map((c) => `「${c}」`).join("・");
   const nCat = (D.job_categories || []).length;
+  const nDetail = D.detail_pages_max ?? 10;
   const date = today();
   return `あなたはブラウザを操作して、転職サイト doda（https://doda.jp/）の求人検索結果を読み取り、CSV にまとめるアシスタントです。
-目的：${s.name}（${s.address}）の周辺で、中途採用（正社員・契約社員）の年収相場を部内の判断材料として把握すること。
+目的：${s.name}（${s.address}）の周辺で、中途採用（正社員・契約社員）の年収と待遇を、部内の判断材料として求人どうし比較できる形で把握すること。
 
 ## 必ず守ること
 - 私が画面の前にいる状態で、通常のブラウザ操作として行ってください。自動化ツールでの大量取得、アクセス制限やボット対策の回避は一切しないでください。
-- 各検索は「検索結果の1ページ目」だけを見てください。2ページ目以降や、求人の詳細ページは開かないでください。
-- ページを開く間隔は毎回5秒以上あけてください。開くページは合計${4 * nCat}ページまでです。
+- 各検索は「検索結果の1ページ目」だけを見てください。2ページ目以降は開かないでください。
+- ${nDetail > 0 ? `求人の詳細ページは、家電量販店・パソコン関連の会社の求人と、ドスパラ（サードウェーブ）の求人に限り、合計${nDetail}件まで開いてよいです。それ以外は検索結果の一覧に表示されている内容だけで書いてください。` : "求人の詳細ページは開かないでください。検索結果の一覧に表示されている内容だけで書いてください。"}
+- ページを開く間隔は毎回5秒以上あけてください。開くページは合計${4 * nCat + nDetail}ページまでです。
 - ログイン・会員登録を求められた、CAPTCHA が出た、アクセス制限の表示が出た、のいずれかの場合はすぐに中止し、そこまでの結果と中止理由を報告してください。
-- 画面に書かれている文字だけを使ってください。記載のない値は空欄にし、推測で埋めないでください。
+- 画面に書かれている内容だけを使ってください。書かれていない値は空欄にし、推測で埋めないでください。
 - 結果は部内の判断材料のみに使い、外部へは提供しません。
 
 ## 検索する条件
@@ -78,27 +81,40 @@ function prompt(s) {
 
 ## 出力
 検索結果に出ている求人ごとに1行の CSV（UTF-8、ヘッダ付き）を、コードブロック1つにまとめて出力してください。
-列（この順番・この名前）：
+列（この順番・この名前。列を足したり減らしたりしない）：
 ${COLS}
 
-各列の書き方：
+**待遇の列は文章を転記せず、下の決まった選択肢から選んでください。** 複数あるときは「|」（半角縦棒）でつなぎ、選択肢の順に並べてください。どの選択肢にも当てはまらない内容は書かずに捨ててください。書かれていなければ空欄です（「なし」とは書かない。ただし求人に「転勤なし」など“無い”ことが明記されている場合は、その選択肢を使う）。
+
 - store_id：常に ${s.id}
+- search_area：その求人が出た検索の勤務地（都道府県＋市区町村。例：${s.muni || s.pref}）
 - site：常に doda
 - company：企業名（画面の表記どおり）
 - job_title：求人のタイトル・職種名（画面の表記どおり）
-- employment：雇用形態（正社員／契約社員 など画面の表記どおり。書かれていなければ空欄）
-- salary_min_man / salary_max_man：年収の下限・上限を「万円」の数値で（例：「年収350万円～500万円」→ 350 と 500。「400万円以上」→ 400 と空欄）。年収の表記が無ければ空欄
-- monthly_min_yen：年収の表記が無く月給だけが書かれている場合のみ、月給の下限を円の数値で（例：月給25万円～ → 250000）。年収の表記がある場合は空欄
-- work_location：検索結果に書かれた勤務地の住所または最寄駅（例：${s.muni || s.pref}○○1-2 ／ ○○駅）。書かれていなければ空欄
+- employment：正社員 / 契約社員 / その他 のどれか
+- salary_min_man / salary_max_man：年収の下限・上限を「万円」の数値で（例：「年収350万円～500万円」→ 350 と 500。「400万円以上」→ 400 と空欄）。「年収583万円／35歳 店長」のようなモデル年収の例は入れない。年収の範囲が無ければ空欄
+- monthly_min_yen：年収の範囲が無く月給が書かれている場合のみ、月給の下限を円の数値で（例：月給25万円～ → 250000）
+- bonus：賞与・ボーナスの記載があれば「有」、無いと明記されていれば「無」、書かれていなければ空欄
+- annual_holidays：年間休日の日数（数値のみ。例：120）
+- overtime_avg_h：月平均の残業時間（数値のみ。例：10）。「残業少なめ」など数値が無ければ空欄
+- transfer（転勤）：${list("transfer")} から1つ
+  （転勤なし＝転勤しない／転居なし＝転居を伴う転勤はしない（近隣の異動はあり得る）／選択可＝転勤ありとなしのコースを選べる／転勤あり）
+- housing（社宅・住宅補助）：${list("housing")}
+- requirements（応募条件・必要資格）：${list("requirements")}
+  （未経験可＝職種または業種の未経験歓迎の表示がある／運転免許＝普通・原付など免許が必須）
+- benefits（福利厚生）：${list("benefits")}
+- other_conditions（その他）：${list("other")}
+- work_location：勤務地の住所または最寄駅だけ（例：${s.muni || s.pref}○○1-2 ／ ○○駅）。宣伝文・複数の勤務地の羅列・「全国の店舗」などは書かず空欄
 - job_category：その求人が出た検索で使った職種キーワード
-- url：その求人へのリンク先URL（検索結果に表示されているもの）
+- source_level：検索結果の一覧だけで書いた行は search、詳細ページも見た行は detail
+- url：その求人へのリンク先URL
 - checked_date：${date}
 
 注意：
 - 同じ求人（同じURL）が複数の検索に出た場合は1行だけにしてください。
 - 値にカンマや改行が含まれる場合はダブルクォートで囲んでください。
 - アルバイト・パート・派遣の求人は含めないでください。
-- 最後に（CSV の外に）、開いたページ数、選んだ勤務地、中止した場合はその理由を書いてください。`;
+- 最後に（CSV の外に）、開いたページ数（一覧・詳細それぞれ）、選んだ勤務地、中止した場合はその理由を書いてください。`;
 }
 function show() {
   const s = D.stores.find((x) => x.id === $("store").value);

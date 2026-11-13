@@ -28,17 +28,21 @@
     <p>この店舗の CSV はまだありません。<a id="plink" href="../prompt.html">指示文ジェネレータ</a>で指示文を作り、出力された CSV を <a href="https://github.com/knoro-hue/HourlyWageSurvey/upload/main/data/doda" target="_blank" rel="noopener">data/doda/</a> にアップロードしてください。</p>
   </section>
 
-  <section class="card" id="dircard">
-    <h2>③直接競合（家電量販・PC関連）</h2>
-    <div class="tablebox"><table><thead id="dh"></thead><tbody id="db"></tbody></table></div>
+  <section class="card" id="sumcard">
+    <h2>待遇の比較（記載のある求人の割合）</h2>
+    <p class="note">求人の文章を「転勤・社宅/住宅補助・応募条件・福利厚生・その他」の決まった項目に振り分けて数えています。％は<b>記載あり</b>の割合で、記載が無い＝制度が無い、とは限りません（検索結果の一覧だけでは書かれないことが多い）。転勤だけは記載のある求人の中での割合です。</p>
+    <div class="tablebox"><table id="sum"></table></div>
   </section>
 
   <section class="card" id="allcard">
-    <h2>全求人（半径内）</h2>
+    <h2>求人ごとの比較（半径内）</h2>
     <div class="controls">
       <input id="q" type="search" placeholder="企業名・求人名で絞り込み" aria-label="企業名・求人名で絞り込み">
-      <select id="g" aria-label="区分"><option value="">すべて</option><option>③直接競合</option><option>その他</option><option>自社</option></select>
+      <select id="g" aria-label="区分"><option value="">区分：すべて</option><option>③直接競合</option><option>その他</option><option>自社</option></select>
+      <select id="tf" aria-label="転勤"><option value="">転勤：指定なし</option></select>
+      <select id="tag" aria-label="待遇で絞り込み"><option value="">待遇：指定なし</option></select>
     </div>
+    <p class="note">見出しをクリックで並べ替え。「待遇」は社宅・住宅補助と福利厚生のうち記載のある項目の数。情報源「詳細」は求人詳細ページまで確認した求人。</p>
     <div class="tablebox"><table><thead id="ah"></thead><tbody id="ab"></tbody></table></div>
     <p class="note">年収は求人に書かれた範囲。月給だけの求人は年収に換算していません（相場の計算から除外）。</p>
   </section>
@@ -54,25 +58,92 @@
     <div id="bench"></div>
   </section>
 </main>
+<style>
+  .chips { display: flex; flex-wrap: wrap; gap: 3px; min-width: 9rem; white-space: normal; }
+  .chip { font-size: 11px; line-height: 1.5; padding: 0 6px; border-radius: 4px; background: #eef2f6; color: var(--fg); white-space: nowrap; }
+  .chip.good { background: rgba(31, 122, 77, .12); color: var(--ok); }
+  .chip.bad { background: rgba(192, 57, 43, .10); color: var(--bad); }
+  th.sortable { cursor: pointer; } th.sortable:hover { color: var(--ind); }
+  th[aria-sort="ascending"]::after { content: " ▲"; } th[aria-sort="descending"]::after { content: " ▼"; }
+  .bar { display: inline-block; vertical-align: middle; width: 54px; height: 6px; border-radius: 3px; background: var(--grid); margin-left: 6px; position: relative; overflow: hidden; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ind); }
+  .bar.dir i { background: var(--dir); } .bar.own i { background: var(--own); }
+  tr.grp td { background: #f6f9fc; font-weight: 500; color: var(--muted); font-size: 12px; }
+  td.c { text-align: center; }
+</style>
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const man = (v) => v == null ? "—" : `${Number(v).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}万円`;
 const safeUrl = (u) => /^https?:\/\//i.test(u || "") ? u : "";
+const NA = '<span class="pending">—</span>';
+const SUPPORT = ["housing", "benefits"];
 function salary(j) {
-  if (j.salary_min_man || j.salary_max_man) return `${j.salary_min_man ?? "—"}〜${j.salary_max_man ?? ""}万円`;
-  if (j.monthly_min_yen) return `<span class="tag">月給のみ</span> ${Number(j.monthly_min_yen).toLocaleString()}円〜`;
+  if (j.salary_min_man || j.salary_max_man) return `${j.salary_min_man ?? "—"}〜${j.salary_max_man ?? ""}`;
+  if (j.monthly_min_yen) return `<span class="tag">月給のみ</span> ${Math.round(j.monthly_min_yen / 1000) / 10}万〜`;
   return '<span class="pending">記載なし</span>';
 }
-const HEAD = '<tr><th>区分</th><th>企業</th><th>求人名</th><th class="num">年収（万円）</th><th>雇用形態</th><th class="num">距離</th><th class="hide-sm">勤務地</th><th class="hide-sm">確認日</th></tr>';
-function row(j) {
-  const tag = j.group === "③直接競合" ? '<span class="tag dir">③直接</span>' : j.group === "自社" ? '<span class="tag own">自社</span>' : '<span class="tag">その他</span>';
-  const u = safeUrl(j.url);
-  return `<tr><td>${tag}</td><td class="wrap">${esc(j.company)}${j.matched_by ? `<span class="sub">${esc(j.matched_by)}</span>` : ""}</td>
-    <td class="wrap">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(j.job_title || "(求人名なし)")}</a>` : esc(j.job_title)}<span class="sub">${esc(j.job_category)}</span></td>
-    <td class="num">${salary(j)}</td><td>${esc(j.employment) || '<span class="pending">—</span>'}</td>
-    <td class="num">${j.distance_km == null ? '<span class="pending">不明</span>' : j.distance_km.toFixed(1) + "km"}</td>
-    <td class="wrap hide-sm">${esc(j.work_location)}<span class="sub">${esc(j.location_method)}</span></td><td class="hide-sm">${esc(j.checked_date)}</td></tr>`;
+const transferChip = (t) => !t ? NA : `<span class="chip ${t === "転勤あり" ? "bad" : t === "選択可" ? "" : "good"}">${esc(t)}</span>`;
+const chips = (a) => a && a.length ? `<div class="chips">${a.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</div>` : NA;
+const groupTag = (g) => g === "③直接競合" ? '<span class="tag dir">③直接</span>' : g === "自社" ? '<span class="tag own">自社</span>' : '<span class="tag">その他</span>';
+const supportN = (j) => SUPPORT.reduce((a, k) => a + (j[k] || []).length, 0);
+const COLS = [
+  ["区分", (j) => groupTag(j.group), (j) => j.group],
+  ["企業・求人", (j) => { const u = safeUrl(j.url); return `<td class="wrap">${esc(j.company)}<span class="sub">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(j.job_title || "(求人名なし)")}</a>` : esc(j.job_title)}・${esc(j.employment || "雇用形態記載なし")}</span></td>`; }, (j) => j.company],
+  ["年収（万円）", (j) => salary(j), (j) => j.salary_min_man ?? -1, "num"],
+  ["転勤", (j) => transferChip(j.transfer), (j) => ["転勤なし", "転居なし", "選択可", "転勤あり", ""].indexOf(j.transfer || "")],
+  ["社宅・住宅補助", (j) => chips(j.housing), (j) => (j.housing || []).length],
+  ["年間休日", (j) => j.annual_holidays ? `${j.annual_holidays}日` : NA, (j) => j.annual_holidays ?? -1, "num"],
+  ["残業（月）", (j) => j.overtime_h != null ? `${j.overtime_h}h` : NA, (j) => j.overtime_h ?? 999, "num"],
+  ["福利厚生", (j) => chips(j.benefits), (j) => (j.benefits || []).length],
+  ["応募条件・必要資格", (j) => chips(j.requirements), (j) => (j.requirements || []).length],
+  ["その他", (j) => chips(j.other), (j) => (j.other || []).length],
+  ["待遇", (j) => supportN(j), supportN, "num"],
+  ["距離", (j) => j.distance_km == null ? '<span class="pending">不明</span>' : `${j.distance_km.toFixed(1)}km<span class="sub">${esc(j.location_method)}</span>`, (j) => j.distance_km ?? 999, "num"],
+  ["情報源", (j) => j.source_level === "detail" ? "詳細" : j.source_level === "search" ? "一覧" : NA, (j) => j.source_level || ""],
+  ["確認日", (j) => esc(j.checked_date), (j) => j.checked_date || ""],
+];
+function cell(c, j) { const v = c[1](j); return String(v).startsWith("<td") ? v : `<td class="${c[3] || ""}">${v}</td>`; }
+const row = (j) => `<tr>${COLS.map((c) => cell(c, j)).join("")}</tr>`;
+let sortCol = null, sortDir = 1;
+function head(id, sortable, rerender) {
+  $(id).innerHTML = `<tr>${COLS.map((c, i) => `<th class="${c[3] || ""}${sortable ? " sortable" : ""}" data-i="${i}"${sortable && sortCol === i ? ` aria-sort="${sortDir > 0 ? "ascending" : "descending"}"` : ""}>${c[0]}</th>`).join("")}</tr>`;
+  if (sortable) $(id).querySelectorAll("th").forEach((th) => th.addEventListener("click", () => {
+    const i = +th.dataset.i; sortDir = sortCol === i ? -sortDir : (COLS[i][3] === "num" || i === 4 || i >= 7 ? -1 : 1); sortCol = i; rerender();
+  }));
+}
+const pct = (v, cls) => v == null ? NA : `${Math.round(v * 100)}%<span class="bar ${cls}"><i style="width:${Math.round(v * 100)}%"></i></span>`;
+function summary(d, s) {
+  const own = s.jobs.filter((j) => j.group === "自社");
+  const cols = [["③直接競合", s.attr_direct, "dir"], ["全体（自社除く）", s.attr_all, ""]];
+  if (own.length) cols.push(["自社", ownSummary(d, own), "own"]);
+  const lab = d.attr_labels, V = d.vocab;
+  const rows = [];
+  const grp = (t) => rows.push(`<tr class="grp"><td colspan="${cols.length + 1}">${esc(t)}</td></tr>`);
+  const line = (name, f) => rows.push(`<tr><td>${esc(name)}</td>${cols.map(([, a, c]) => `<td class="num">${a && a.n ? f(a, c) : NA}</td>`).join("")}</tr>`);
+  grp(lab.transfer);
+  line("転勤なし・転居なし", (a, c) => a.transfer.known ? `${pct(a.no_transfer_rate, c)}<span class="sub">記載${a.transfer.known}件中</span>` : NA);
+  line("転勤あり（選択可を含む）", (a, c) => a.transfer.known ? pct((a.transfer["転勤あり"] + a.transfer["選択可"]) / a.transfer.known, c) : NA);
+  for (const key of ["housing", "benefits", "requirements", "other"]) {
+    grp(lab[key]);
+    if (key === "other") {
+      line("年間休日（中央値）", (a) => a.holidays.n ? `${a.holidays.median}日<span class="sub">${a.holidays.n}件</span>` : NA);
+      line("残業 月平均（中央値）", (a) => a.overtime.n ? `${a.overtime.median}h<span class="sub">${a.overtime.n}件</span>` : NA);
+    }
+    for (const name of V[key]) line(name, (a, c) => pct(a[key][name], c));
+  }
+  $("sum").innerHTML = `<thead><tr><th>項目</th>${cols.map(([t, a]) => `<th class="num">${t}<span class="sub">${a.n}件（詳細${a.detail_n}）</span></th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody>`;
+}
+function ownSummary(d, jobs) { // 自社求人の記載（サーバー側集計と同じ定義）
+  const n = jobs.length, known = jobs.map((j) => j.transfer).filter(Boolean);
+  const a = { n, detail_n: jobs.filter((j) => j.source_level === "detail").length, transfer: { known: known.length } };
+  for (const t of d.vocab.transfer) a.transfer[t] = known.filter((x) => x === t).length;
+  a.no_transfer_rate = known.length ? known.filter((x) => x === "転勤なし" || x === "転居なし").length / known.length : null;
+  for (const k of ["housing", "benefits", "requirements", "other"]) { a[k] = {}; for (const t of d.vocab[k]) a[k][t] = jobs.filter((j) => (j[k] || []).includes(t)).length / n; }
+  const med = (v) => { v = v.filter((x) => x != null).sort((x, y) => x - y); return v.length ? (v.length % 2 ? v[v.length >> 1] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : null; };
+  const h = jobs.map((j) => j.annual_holidays).filter(Boolean), o = jobs.map((j) => j.overtime_h).filter((x) => x != null);
+  a.holidays = { n: h.length, median: med(h) }; a.overtime = { n: o.length, median: med(o) };
+  return a;
 }
 function bench(b) {
   const rows = (b.items || []).map((it) => `<tr><td>${esc(it.occupation)}</td><td class="num">${it.annual_man != null ? man(it.annual_man) : '<span class="pending">要確認</span>'}</td></tr>`).join("");
@@ -87,24 +158,29 @@ fetch("data.json", { cache: "no-store" }).then((r) => r.json()).then((d) => {
   $("lede").innerHTML = `${esc(s.address)}／店舗から<b>半径${d.radius_km}km以内</b>の正社員・契約社員の求人（doda）を<b>年収の下限</b>で集計。` +
     (s.total ? `確認日 ${esc(s.checked_from)}${s.checked_from !== s.checked_to ? "〜" + esc(s.checked_to) : ""}。` : "");
   const tile = (l, st, n) => `<div class="tile"><span class="label">${l}</span><span class="value">${st && st.n ? `${Math.round(st.median)}<small>万円</small>` : "—"}</span><span class="note">${st && st.n ? `25〜75%：${st.p25}〜${st.p75}万円・${st.n}件` : n}</span></div>`;
-  $("tiles").innerHTML = tile("年収下限 中央値（全職種）", s.all, "データなし") + tile("③直接競合", s.direct, "該当なし") + tile("その他", s.other, "該当なし") +
-    `<div class="tile"><span class="label">月給のみ・給与記載なし</span><span class="value">${s.monthly_only_n}<small>件</small> / ${s.no_salary_n}<small>件</small></span><span class="note">年収に換算せず相場から除外</span></div>`;
-  if (!s.total) { $("none").hidden = false; ["dircard", "allcard", "excard"].forEach((id) => ($(id).hidden = true)); }
-  const dir = s.jobs.filter((j) => j.group === "③直接競合");
-  $("dh").innerHTML = HEAD;
-  $("db").innerHTML = dir.length ? dir.map(row).join("") : '<tr><td colspan="8"><span class="pending">半径内に該当なし</span></td></tr>';
-  $("ah").innerHTML = HEAD;
+  const aa = s.attr_all || {};
+  $("tiles").innerHTML = tile("年収下限 中央値（全職種）", s.all, "データなし") + tile("③直接競合", s.direct, "該当なし") +
+    `<div class="tile"><span class="label">転勤なし・転居なし</span><span class="value">${aa.no_transfer_rate == null ? "—" : Math.round(aa.no_transfer_rate * 100) + "<small>%</small>"}</span><span class="note">転勤の記載がある${aa.transfer ? aa.transfer.known : 0}件中</span></div>` +
+    `<div class="tile"><span class="label">年間休日 中央値</span><span class="value">${aa.holidays && aa.holidays.n ? aa.holidays.median + "<small>日</small>" : "—"}</span><span class="note">記載${aa.holidays ? aa.holidays.n : 0}件／月給のみ ${s.monthly_only_n}件</span></div>`;
+  if (!s.total) { $("none").hidden = false; ["sumcard", "allcard", "excard"].forEach((id) => ($(id).hidden = true)); }
+  else summary(d, s);
+  $("tf").insertAdjacentHTML("beforeend", d.vocab.transfer.map((t) => `<option>${esc(t)}</option>`).join("") + '<option value="-">記載なし</option>');
+  $("tag").insertAdjacentHTML("beforeend", ["housing", "benefits", "requirements", "other"].map((k) => `<optgroup label="${esc(d.attr_labels[k])}">${d.vocab[k].map((t) => `<option value="${k}:${esc(t)}">${esc(t)}</option>`).join("")}</optgroup>`).join(""));
   const render = () => {
-    const q = $("q").value.trim(), g = $("g").value;
-    $("ab").innerHTML = s.jobs.filter((j) => (!g || j.group === g) && (!q || (j.company + j.job_title).includes(q))).map(row).join("") || '<tr><td colspan="8"><span class="pending">該当なし</span></td></tr>';
+    const q = $("q").value.trim(), g = $("g").value, tf = $("tf").value, tag = $("tag").value;
+    let list = s.jobs.filter((j) => (!g || j.group === g) && (!q || (j.company + j.job_title).includes(q)) &&
+      (!tf || (tf === "-" ? !j.transfer : j.transfer === tf)) && (!tag || (j[tag.split(":")[0]] || []).includes(tag.slice(tag.indexOf(":") + 1))));
+    if (sortCol != null) { const f = COLS[sortCol][2]; list = [...list].sort((a, b) => { const x = f(a), y = f(b); return (x > y ? 1 : x < y ? -1 : 0) * sortDir; }); }
+    head("ah", true, render);
+    $("ab").innerHTML = list.map(row).join("") || `<tr><td colspan="${COLS.length}"><span class="pending">該当なし</span></td></tr>`;
   };
-  $("q").addEventListener("input", render); $("g").addEventListener("change", render); render();
-  $("exnote").textContent = `半径${d.radius_km}km超 ${s.far}件・勤務地の位置が分からない ${s.unknown_location}件。位置不明は CSV の work_location に住所か最寄駅を入れると集計されます。`;
-  $("eh").innerHTML = HEAD;
-  $("eb").innerHTML = s.excluded.length ? s.excluded.map(row).join("") : '<tr><td colspan="8"><span class="pending">なし</span></td></tr>';
+  ["q", "g", "tf", "tag"].forEach((id) => $(id).addEventListener(id === "q" ? "input" : "change", render)); render();
+  $("exnote").textContent = `半径${d.radius_km}km超 ${s.far}件・勤務地の位置が分からない ${s.unknown_location}件。`;
+  head("eh", false);
+  $("eb").innerHTML = s.excluded.length ? s.excluded.map(row).join("") : `<tr><td colspan="${COLS.length}"><span class="pending">なし</span></td></tr>`;
   if (!s.excluded.length && s.total) $("excard").hidden = true;
   $("bench").innerHTML = bench(d.benchmarks);
-}).catch(() => { $("title").textContent = "データを読み込めませんでした"; });
+}).catch((e) => { console.error(e); $("title").textContent = "データを読み込めませんでした"; });
 </script>
 </body>
 </html>

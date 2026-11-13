@@ -28,3 +28,7 @@ benchmarks:
       monthly_contractual_yen: null
       annual_bonus_yen: null
       annual_man: null
+
+# 待遇（転勤・社宅・福利厚生など）を読むために、求人詳細ページを開いてよい件数の上限（1店舗あたり）。
+# 家電量販・PC関連の求人と自社の求人を優先。0 にすると検索結果の一覧だけで読む
+detail_pages_max: 10

@@ -30,8 +30,62 @@ from .records import CLASS_DIRECT, CLASS_OWN, classify, nfkc
 log = logging.getLogger(__name__)
 JST = dt.timezone(dt.timedelta(hours=9))
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates", "chuto")
-COLUMNS = ["store_id", "site", "company", "job_title", "employment", "salary_min_man", "salary_max_man",
-           "monthly_min_yen", "work_location", "job_category", "url", "checked_date"]
+COLUMNS = ["store_id", "search_area", "site", "company", "job_title", "employment", "salary_min_man", "salary_max_man",
+           "monthly_min_yen", "bonus", "annual_holidays", "overtime_avg_h", "transfer", "housing", "requirements",
+           "benefits", "other_conditions", "work_location", "job_category", "source_level", "url", "checked_date"]
+
+# ---- 待遇の正規化：文章を決まった選択肢（タグ）にそろえて比較できるようにする ----
+# 指示文で決めた選択肢の値も、以前の CSV の文章（transfer_note・other_benefits・tags など）も同じ規則で読む。
+# タグが付かない＝「記載なし」（求人一覧の画面だけでは分からないことが多い）。推測では付けない。
+TRANSFER_CHOICES = ["転勤なし", "転居なし", "選択可", "転勤あり"]  # 転居なし＝転居を伴う転勤なし（近隣の異動はあり得る）
+ATTR_VOCAB: dict[str, list[tuple[str, str]]] = {
+    "housing": [
+        ("社宅・寮", r"社宅|社員寮|独身寮|(?<![a-zA-Z])寮(?!費)|借り?上げ"),
+        ("住宅手当", r"住宅手当|住居手当|家賃補助|家賃手当|住宅補助|住宅支援|住まい手当"),
+        ("引越し補助", r"引っ?越し?(?:補助|サポート|手当|費用)|転居(?:費用|補助|手当)|赴任手当"),
+    ],
+    "requirements": [
+        ("未経験可", r"未経験(?:歓迎|可|OK|者歓迎)|経験不問|職種未経験|業種未経験"),
+        ("学歴不問", r"学歴不問|学歴・経験不問"),
+        ("高卒以上", r"高卒以上|高校卒業以上"),
+        ("大卒以上", r"大卒以上|大学卒業以上|四大卒"),
+        ("運転免許", r"免許"),
+        ("販売・接客経験", r"(?:販売|接客)[^。|｜/／]{0,12}(?<!未)経験(?!不問)"),
+        ("社会人経験", r"社会人経験|就業経験"),
+        ("管理職経験", r"(?:店長|管理職|マネジメント|マネージャー)(?:の|として|等の|などの)?(?:実務)?経験(?!不問)"),
+        ("PCスキル", r"PCスキル|パソコン(?:スキル|操作)|PC操作|Excel|エクセル"),
+    ],
+    "benefits": [
+        ("賞与", r"賞与|ボーナス"),
+        ("昇給", r"昇給"),
+        ("交通費", r"交通費|通勤手当"),
+        ("退職金", r"退職金|退職手当|退職年金|確定拠出|確定給付|企業年金"),
+        ("家族手当", r"家族手当|扶養手当"),
+        ("資格支援", r"資格(?:取得|手当|支援|奨励)"),
+        ("社員割引", r"社員割引|社割|従業員割引|従業員向けクーポン"),
+        ("持株会", r"持株"),
+        ("育児支援", r"保育|育児|育休|産休|時短勤務"),
+        ("研修制度", r"研修"),
+    ],
+    "other": [
+        ("完全週休2日", r"完全週休2日|完全週休二日"),
+        ("土日休み", r"土日"),
+        ("車通勤可", r"マイカー|自動車通勤|車通勤"),
+        ("リモート可", r"リモート|在宅勤務"),
+        ("副業可", r"副業"),
+        ("上場企業", r"上場企業"),
+    ],
+}
+ATTR_LABELS = {"transfer": "転勤", "housing": "社宅・住宅補助", "requirements": "応募条件・必要資格",
+               "benefits": "福利厚生", "other": "その他"}
+# どの列の文章からタグを拾うか（新しい選択肢の列＋以前の CSV の文章の列）
+_ATTR_FIELDS = {
+    "housing": ["housing", "company_housing_note", "rent_subsidy_note", "other_benefits", "work_location", "job_title"],
+    "requirements": ["requirements", "required_qualifications", "required_experience", "education_requirement", "tags", "job_title"],
+    "benefits": ["benefits", "other_benefits", "commute_allowance", "salary_text"],
+    "other": ["other_conditions", "holiday_text", "other_benefits", "tags", "work_location", "job_title"],
+}
+_YES = {"有", "あり", "○", "yes", "true", "1"}
 GROUP_DIRECT = "③直接競合"
 GROUP_OTHER = "その他"
 GROUP_OWN = "自社"
@@ -53,6 +107,15 @@ class ChutoJob:
     job_category: str
     url: str
     checked_date: str
+    search_area: str = ""
+    source_level: str = ""      # search＝検索結果の一覧だけ / detail＝求人詳細も確認
+    transfer: str = ""          # TRANSFER_CHOICES のいずれか。空＝記載なし
+    housing: list = None
+    requirements: list = None
+    benefits: list = None
+    other: list = None
+    annual_holidays: float | None = None
+    overtime_h: float | None = None
     source_file: str = ""
     distance_km: float | None = None
     location_method: str = ""
@@ -85,6 +148,59 @@ def _date(v) -> str:
     return ""
 
 
+def _tags(text: str, vocab: list[tuple[str, str]]) -> list[str]:
+    t = nfkc(text)
+    return [name for name, pat in vocab if re.search(pat, t, re.I)]
+
+
+def parse_transfer(r: dict) -> str:
+    col = nfkc(r.get("transfer")).strip()
+    texts = " ".join(nfkc(r.get(k)) for k in ("transfer", "transfer_note", "tags", "work_location", "job_title"))
+    no_move = re.search(r"転居を?伴う(?:転勤|異動)(?:は|が)?(?:なし|無し|ありません|ない)|転居なし", texts)
+    has = col in ("有", "あり", "転勤あり") or re.search(r"転勤(?:の可能性)?(?:あり|有り|がある|の可能性)|全国転勤", texts)
+    none = col in ("無", "なし", "転勤なし") or re.search(r"転勤(?:は|が)?(?:なし|無し|ありません|ない)", texts)
+    if col in TRANSFER_CHOICES:
+        return col
+    if has and (none or no_move) and not col:
+        return "選択可"
+    if col in ("有", "あり"):
+        return "転勤あり"
+    if no_move:
+        return "転居なし"
+    if none:
+        return "転勤なし"
+    if has:
+        return "転勤あり"
+    return ""
+
+
+def parse_attributes(r: dict) -> dict:
+    """1行（列名→値）から比較用の待遇タグを作る"""
+    out = {"transfer": parse_transfer(r)}
+    for key, fields in _ATTR_FIELDS.items():
+        text = " | ".join(nfkc(r.get(f)) for f in fields if r.get(f))
+        out[key] = _tags(text, ATTR_VOCAB[key])
+    if nfkc(r.get("company_housing")).strip() in _YES and "社宅・寮" not in out["housing"]:
+        out["housing"].insert(0, "社宅・寮")
+    if nfkc(r.get("rent_subsidy")).strip() in _YES and "住宅手当" not in out["housing"]:
+        out["housing"].append("住宅手当")
+    if nfkc(r.get("bonus")).strip() in _YES and "賞与" not in out["benefits"]:
+        out["benefits"].insert(0, "賞与")
+    if nfkc(r.get("inexperienced_ok")).strip() in _YES and "未経験可" not in out["requirements"]:
+        out["requirements"].insert(0, "未経験可")
+    for key in ("housing", "requirements", "benefits", "other"):  # 選択肢の順にそろえる
+        order = [n for n, _ in ATTR_VOCAB[key]]
+        out[key] = sorted(set(out[key]), key=order.index)
+    hol = _num(r.get("annual_holidays"))
+    if hol is None:
+        m = re.search(r"年間休日\D{0,4}(\d{2,3})", nfkc(r.get("holiday_text")))
+        hol = float(m.group(1)) if m else None
+    out["annual_holidays"] = hol if hol and 50 <= hol <= 200 else None
+    ot = _num(r.get("overtime_avg_h"))
+    out["overtime_h"] = ot if ot is not None and ot <= 100 else None
+    return out
+
+
 def read_csv_file(path: str) -> list[ChutoJob]:
     """UTF-8（BOM 可）。ヘッダの空白や大文字小文字の揺れは吸収。必須列 store_id が空の行は捨てる"""
     out = []
@@ -112,7 +228,10 @@ def read_csv_file(path: str) -> list[ChutoJob]:
                 job_category=nfkc(r.get("job_category")).strip(),
                 url=nfkc(r.get("url")).strip(),
                 checked_date=_date(r.get("checked_date")),
+                search_area=nfkc(r.get("search_area")).strip(),
+                source_level=nfkc(r.get("source_level")).strip().lower(),
                 source_file=os.path.basename(path),
+                **parse_attributes(r),
             ))
     return out
 
@@ -167,9 +286,27 @@ def muni_of(address: str) -> str:
 def locate(job: ChutoJob, store: dict, geocoder) -> tuple[float | None, float | None, str]:
     """勤務地（住所 or 最寄駅）を座標にする。都道府県が無ければ店舗の都道府県を補う"""
     loc = nfkc(job.work_location).strip()
-    if not loc:
-        return None, None, "不明"
     pref = store.get("prefecture_label", "")
+    if loc and not _looks_like_pr(loc):
+        pt = _locate_text(loc, pref, geocoder)
+        if pt:
+            return pt
+    # 勤務地が書かれていない・宣伝文しか無い場合は、検索した市区町村（doda がその地域の求人として出したもの）の中心で代用
+    area = nfkc(job.search_area).strip()
+    if area:
+        q = area if _PREF.match(area) else pref + area
+        pt = geocoder.geocode(q)
+        if pt:
+            return pt[0], pt[1], "検索エリア"
+    return None, None, "不明"
+
+
+def _looks_like_pr(s: str) -> bool:
+    """「【転勤なし】…全国の直営店…」のような宣伝文は住所として扱わない"""
+    return len(s) > 60 or bool(re.search(r"[【】★◎■□◆※《》＼!！]|全国|各店舗|いずれか|または|など", s))
+
+
+def _locate_text(loc: str, pref: str, geocoder):
     parts = [p for p in re.split(r"[／/、,]|\s+", loc) if p]
     for p in parts or [loc]:
         p = re.sub(r"^(最寄(?:り)?駅?|勤務地)[:：]?", "", p)
@@ -188,7 +325,7 @@ def locate(job: ChutoJob, store: dict, geocoder) -> tuple[float | None, float | 
                 pt = geocoder.geocode(muni)
                 if pt:
                     return pt[0], pt[1], "市区町村の中心"
-    return None, None, "不明"
+    return None
 
 
 def classify_job(job: ChutoJob, store: dict, settings: dict) -> tuple[str, str]:
@@ -217,6 +354,28 @@ def annual_stats(rows: list[ChutoJob]) -> dict:
     q = statistics.quantiles(v, n=4, method="inclusive") if len(v) >= 2 else [v[0], v[0], v[0]]
     rd = lambda x: round(x, 1)  # noqa: E731
     return {"n": len(v), "p25": rd(q[0]), "median": rd(statistics.median(v)), "p75": rd(q[2]), "min": v[0], "max": v[-1]}
+
+
+def _median(v: list[float]) -> float | None:
+    return round(statistics.median(v), 1) if v else None
+
+
+def attr_summary(jobs: list[ChutoJob]) -> dict:
+    """待遇の比較用集計。率は「記載あり」の割合（記載なしは無いとは限らない）"""
+    n = len(jobs)
+    out = {"n": n, "detail_n": sum(1 for j in jobs if j.source_level == "detail")}
+    known = [j.transfer for j in jobs if j.transfer]
+    out["transfer"] = {"known": len(known), **{c: known.count(c) for c in TRANSFER_CHOICES}}
+    out["no_transfer_rate"] = round(sum(1 for t in known if t in ("転勤なし", "転居なし")) / len(known), 3) if known else None
+    out["housing_rate"] = round(sum(1 for j in jobs if {"社宅・寮", "住宅手当"} & set(j.housing or [])) / n, 3) if n else None
+    for key in ("housing", "requirements", "benefits", "other"):
+        out[key] = {name: (round(sum(1 for j in jobs if name in (getattr(j, key) or [])) / n, 3) if n else None)
+                    for name, _ in ATTR_VOCAB[key]}
+    hol = [j.annual_holidays for j in jobs if j.annual_holidays]
+    ot = [j.overtime_h for j in jobs if j.overtime_h is not None]
+    out["holidays"] = {"n": len(hol), "median": _median(hol)}
+    out["overtime"] = {"n": len(ot), "median": _median(ot)}
+    return out
 
 
 def benchmark_rows(cfg: dict) -> dict:
@@ -263,6 +422,7 @@ def build(stores: list[dict], settings: dict, cfg: dict, geocoder, today: dt.dat
             "checked_from": dates[0] if dates else None, "checked_to": dates[-1] if dates else None,
             "total": len(jobs), "near": len(near), "far": far, "unknown_location": unknown,
             "all": annual_stats(market), "direct": annual_stats(direct), "other": annual_stats([j for j in market if j.group == GROUP_OTHER]),
+            "attr_all": attr_summary(market), "attr_direct": attr_summary(direct),
             "monthly_only_n": len(monthly_only), "no_salary_n": sum(1 for j in market if not j.salary_min_man and not j.monthly_min_yen),
             "jobs": [asdict(j) for j in sorted(near, key=lambda j: (j.group != GROUP_DIRECT, j.distance_km or 0))],
             "excluded": [asdict(j) for j in jobs if j not in near],
@@ -271,7 +431,9 @@ def build(stores: list[dict], settings: dict, cfg: dict, geocoder, today: dt.dat
         "generated": dt.datetime.now(JST).strftime("%Y-%m-%d %H:%M"), "today": today.isoformat(),
         "radius_km": radius, "max_age_days": int(cfg.get("max_age_days", 90)),
         "csv_rows": len(raw), "dup_removed": len(raw) - len(dedupe(raw)), "expired": expired, "unknown_store_ids": unknown_ids,
-        "job_categories": cfg.get("job_categories") or [], "benchmarks": benchmark_rows(cfg), "stores": out_stores,
+        "job_categories": cfg.get("job_categories") or [], "detail_pages_max": int(cfg.get("detail_pages_max", 10)),
+        "vocab": {"transfer": TRANSFER_CHOICES, **{k: [n for n, _ in v] for k, v in ATTR_VOCAB.items()}},
+        "attr_labels": ATTR_LABELS, "benchmarks": benchmark_rows(cfg), "stores": out_stores,
     }
 
 
