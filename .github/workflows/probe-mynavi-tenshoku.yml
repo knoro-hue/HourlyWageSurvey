@@ -1,0 +1,41 @@
+name: 一時確認（マイナビ転職）
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/probe-mynavi-tenshoku.yml"]
+permissions:
+  contents: read
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash {0}
+        run: |
+          UA="HourlyWageSurveyBot/1.0 (recruiting wage research; +https://github.com/knoro-hue/hourlywagesurvey)"
+          B=https://tenshoku.mynavi.jp
+          echo "=== robots"; curl -sS -m 30 -A "$UA" -w "\nHTTP %{http_code}\n" $B/robots.txt | head -120
+          sleep 5
+          echo "=== top"; curl -sSL -m 30 -A "$UA" -o /tmp/top.html -w "HTTP %{http_code}\n" $B/
+          grep -o 'href="[^"]*"' /tmp/top.html | grep -E 'kiyaku|terms|rule|policy|/list/|/osaka|/tokyo' | sort -u | head -40
+          sleep 5
+          for u in $B/osaka/list/p27/ $B/list/p27/ $B/osaka/; do
+            code=$(curl -sSL -m 30 -A "$UA" -o /tmp/l.html -w "%{http_code} %{url_effective}" "$u"); echo "=== $u -> $code size=$(wc -c </tmp/l.html)"
+            grep -o '<title>[^<]*' /tmp/l.html | head -1
+            grep -oE '(年収|月給)[0-9０-９,，.万～〜~ 円]{2,30}' /tmp/l.html | head -5
+            grep -o 'href="/jobinfo-[^"]*"' /tmp/l.html | sort -u | head -3
+            grep -o 'href="[^"]*/list/[^"]*"' /tmp/l.html | sort -u | head -15
+            sleep 5
+          done
+          for u in $B/help/kiyaku/ $B/kiyaku/ ; do
+            code=$(curl -sSL -m 30 -A "$UA" -o /tmp/k.html -w "%{http_code}" "$u"); echo "=== $u $code"
+            if [ "$code" = 200 ]; then python3 - <<'PY'
+          import re,html
+          t=open('/tmp/k.html',encoding='utf-8',errors='ignore').read()
+          t=re.sub(r'<script.*?</script>|<style.*?</style>','',t,flags=re.S); t=html.unescape(re.sub(r'<[^>]+>',' ',t)); t=re.sub(r'\s+',' ',t)
+          for k in ['自動','ロボット','クローラ','スクレイピング','機械的','プログラム','収集','複製','私的','第三者']:
+              for m in re.finditer(k,t):
+                  print(k,'|',t[max(0,m.start()-150):m.end()+150]); break
+          PY
+            fi
+            sleep 5
+          done
