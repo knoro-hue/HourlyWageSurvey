@@ -1,5 +1,7 @@
-# 手入力求人の CSV 置き場（現在は未使用）
+# 手入力・Indeed 書き写しボタンの CSV 置き場
 
-Indeed などは扱わない方針のため、通常は使いません。ここに置いた `*.csv` は次回の調査から取り込まれるので、不要なファイルは置かないでください。
+このフォルダに置いた `*.csv` は、次回の調査から自動で取り込まれます（同じ求人URLは1件にまとめます）。
 
+- Indeed 書き写しボタン：https://knoro-hue.github.io/HourlyWageSurvey/tools/indeed.html
 - 列：store_id, classification(own/direct/indirect), site, company, shop, occupation, employment, wage_type, wage_min, wage_max, address, work_content, url, checked_date
+- 古くなったファイルは削除してください（掲載終了した求人が残り続けます）。

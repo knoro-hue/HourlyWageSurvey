@@ -198,7 +198,7 @@ def _manual_paths(settings: dict) -> list[str]:
 
 def load_manual_rows(store: dict, settings: dict, geocoder) -> list[JobRow]:
     """Indeed・バイトル等、自動取得しない媒体の求人を CSV から取り込む
-    （data/manual_jobs.csv と data/manual/*.csv。Indeed 収集ボタンの CSV はそのまま data/manual に置けばよい）"""
+    （data/manual_jobs.csv と data/manual/*.csv。Indeed 書き写しボタンの CSV はそのまま data/manual に置けばよい）"""
     cls_map = {"own": CLASS_OWN, "direct": CLASS_DIRECT, "indirect": CLASS_INDIRECT,
                "①": CLASS_OWN, "②": CLASS_INDIRECT, "③": CLASS_DIRECT}
     out, seen = [], set()

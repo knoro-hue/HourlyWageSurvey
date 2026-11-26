@@ -173,6 +173,8 @@ def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml")
             continue
         with open(p, encoding="utf-8") as f:
             d = json.load(f)
+        if not isinstance(d, dict) or "summary" not in d or "store" not in d:
+            continue  # 店舗ページ以外（docs/chuto など別ページのデータ）は触らない
         # 画面の改修を全店に反映（店舗ページの HTML は全店共通）
         shutil.copyfile(os.path.join(TEMPLATE_DIR, "dashboard.html"), os.path.join(docs_dir, sid, "index.html"))
         s = d["summary"]
@@ -196,6 +198,10 @@ def write_index(docs_dir: str = "docs", stores_path: str = "config/stores.yaml")
         json.dump(list(entries.values()), f, ensure_ascii=False)
     shutil.copyfile(os.path.join(TEMPLATE_DIR, "index.html"), os.path.join(docs_dir, "index.html"))
     write_legacy_redirects(docs_dir, [e["id"] for e in entries.values()])
+    tools = os.path.join(docs_dir, "tools")
+    os.makedirs(tools, exist_ok=True)
+    shutil.copyfile(os.path.join(TEMPLATE_DIR, "indeed.html"), os.path.join(tools, "indeed.html"))
+    shutil.copyfile(os.path.join(TEMPLATE_DIR, "indeed_collector.js"), os.path.join(tools, "indeed_collector.js"))
     write_export(docs_dir, list(entries.values()))
 
 

@@ -308,3 +308,18 @@ def test_chuto_locate_falls_back_to_search_area():
     j = ChutoJob("dospara-akihabara", "doda", "A社", "販売", "正社員", None, None, None,
                  "【転勤なし】港区本社または東京・神奈川の各店舗", "販売・接客", "u", "2026-11-13", search_area="東京都千代田区")
     assert locate(j, {"prefecture_label": "東京都"}, Geo()) == (35.69, 139.75, "検索エリア")
+
+
+def test_write_index_skips_non_store_pages(tmp_path):
+    """docs 配下に店舗以外のページ（中途採用 docs/chuto など）の data.json があっても落ちず、上書きもしない"""
+    import json
+
+    from wage_survey.dashboard import write_index
+
+    d = tmp_path / "docs"
+    (d / "chuto").mkdir(parents=True)
+    (d / "chuto" / "data.json").write_text(json.dumps({"stores": []}), encoding="utf-8")
+    (d / "chuto" / "index.html").write_text("chuto", encoding="utf-8")
+    write_index(str(d), "config/stores.yaml")
+    assert (d / "chuto" / "index.html").read_text(encoding="utf-8") == "chuto"
+    assert (d / "stores.json").exists()

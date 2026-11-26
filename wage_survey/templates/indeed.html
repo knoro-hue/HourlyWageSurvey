@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indeed 書き写しボタン</title>
+<style>
+  :root { --ink: #1f2933; --muted: #5f6b76; --line: #dde3ea; --accent: #2557a7; --bg: #f7f9fb; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.7 "Noto Sans JP", system-ui, sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 24px 16px 60px; }
+  a { color: var(--accent); }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin: 16px 0; }
+  h1 { font-size: 22px; margin: 8px 0; } h2 { font-size: 17px; margin: 0 0 8px; }
+  .btn { display: inline-block; background: var(--accent); color: #fff; padding: 18px 30px; border-radius: 12px; text-decoration: none; font-size: 20px; font-weight: 700; cursor: grab; box-shadow: 0 3px 10px rgba(37,87,167,.25); }
+  details summary { cursor: pointer; color: var(--accent); }
+  .why { background: #eef4fb; border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+  ol li { margin: 6px 0; } .note { color: var(--muted); font-size: 13px; }
+  code { background: #eef2f6; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="../">← 時給調査ダッシュボード</a></p>
+  <h1>Indeed 書き写しボタン</h1>
+  <p>Indeed で普通に検索して表示された検索結果を、ボタン1回で書き写して CSV にします。ボタンはいま表示しているページを読むだけで、ページを開いたり送ったりはしません。</p>
+  <p class="why"><b>なぜこの方式？</b> サーバーから自動で取りに行くと Indeed のロボット確認で遮断され、利用規約もボット等による自動収集を禁止しています。担当者が普通に見ている画面を書き写す（コピペの代わり）だけにしています。</p>
+
+  <section class="card">
+    <h2>1. ボタンをブックマークバーに入れる（最初の1回だけ・パソコンの Chrome / Edge 推奨）</h2>
+    <p><a class="btn" id="bm" href="#">読み込み中…</a></p>
+    <p class="note">この青いボタンを、ブラウザのブックマークバーへドラッグしてください（ブックマークバーが見えないときは Ctrl+Shift+B / ⌘+Shift+B）。店舗一覧が変わったら入れ直してください。</p>
+  </section>
+
+  <section class="card">
+    <h2>2. Indeed で書き写す</h2>
+    <ol>
+      <li><a href="https://jp.indeed.com/" target="_blank" rel="noopener">jp.indeed.com</a> で、店舗の地域と職種を普通に検索する（例：「家電量販店 アルバイト」×「大阪市浪速区」）</li>
+      <li>ブックマークバーの「時給調査：Indeed書き写し」を押す → 右上にパネルが出ます</li>
+      <li>店舗と種類（③直接競合／②間接競合）を選んで「このページを追加」</li>
+      <li>次のページは自分で開いて、また「このページを追加」。必要な分だけ繰り返す</li>
+      <li>終わったら「CSVを保存」</li>
+    </ol>
+    <p class="note">同じページを2回押しても二重には入りません。パネルを閉じても、集めたデータはこのブラウザに残ります。</p>
+  </section>
+
+  <section class="card">
+    <h2>3. CSV を取り込む</h2>
+    <ol>
+      <li><a href="../">時給調査ダッシュボード</a>の Indeed 欄にある「<b>CSVを取り込んで反映</b>」を押す</li>
+      <li>保存した CSV を選ぶ（複数可）→ 確認画面で「OK」</li>
+    </ol>
+    <p>マイナビバイトは取り直さず、最新の調査結果に Indeed の求人を足して作り直すので、数分で一覧・距離・グラフ・ダウンロード用データに入ります。以後の毎週の調査にも自動で入ります（確認日から60日で外れます）。</p>
+  </section>
+
+  <section class="card">
+    <h2>注意</h2>
+    <p class="note">部内の相場確認に使う範囲にとどめ、集めたデータは外部に出さないでください。</p>
+  </section>
+</main>
+<script>
+(async () => {
+  const bm = document.getElementById('bm');
+  try {
+    const [stores, code] = await Promise.all([
+      fetch('../stores.json').then((r) => r.json()),
+      fetch('indeed_collector.js').then((r) => r.text()),
+    ]);
+    const list = stores.map((s) => ({ id: s.id, name: s.name, pref: s.pref || '', address: s.address || '' }));
+    const src = code.replace('__STORES__', JSON.stringify(list));
+    bm.href = 'javascript:' + encodeURIComponent(src);
+    bm.textContent = '時給調査：Indeed書き写し';
+    bm.addEventListener('click', (e) => { e.preventDefault(); alert('このボタンはブックマークバーへドラッグして使います。'); });
+  } catch (e) {
+    bm.textContent = '読み込みに失敗しました（ページを再読み込みしてください）';
+  }
+})();
+</script>
+</body>
+</html>
