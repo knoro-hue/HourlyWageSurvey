@@ -1,0 +1,14 @@
+name: 一時確認（Indeed）
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash {0}
+        run: |
+          UA="HourlyWageSurveyBot/1.0 (+https://github.com/knoro-hue/HourlyWageSurvey)"
+          for u in "https://jp.indeed.com/robots.txt" "https://jp.indeed.com/jobs?q=%E5%AE%B6%E9%9B%BB&l=%E5%A4%A7%E9%98%AA%E5%B8%82%E6%B5%AA%E9%80%9F%E5%8C%BA" "https://jp.indeed.com/career/%E8%B2%A9%E5%A3%B2%E3%82%B9%E3%82%BF%E3%83%83%E3%83%95/salaries/%E5%A4%A7%E9%98%AA%E5%BA%9C"; do
+            code=$(curl --http1.1 -sS -m 30 -A "$UA" -o /tmp/o.html -w "%{http_code}" "$u"); echo "=== $code $(wc -c </tmp/o.html)B $u"
+            grep -o -i "cf-challenge\|challenge-platform\|Just a moment\|captcha\|hCaptcha\|Additional Verification\|mosaic-provider-jobcards\|時給[^<]\{0,30\}" /tmp/o.html | sort | uniq -c | head -8
+            sleep 6
+          done
